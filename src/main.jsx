@@ -5,6 +5,13 @@ import InstallPrompt from './pages/InstallPrompt'
 import './index.css'
 import App from './App.jsx'
 
+
+window.__deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  window.__deferredInstallPrompt = e;
+});
+
 // Register service worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
