@@ -341,7 +341,7 @@ function Dashboard() {
               <div className="balance-amount-row">
                 <div className={`balance-amount ${balanceVisible ? "" : "hidden"}`}>
                   {balanceVisible
-                    ? `₦ ${offlineBalance.toLocaleString()}`
+                    ? `₦${offlineBalance.toLocaleString()}`
                     : "*****"}
                 </div>
                 <button

@@ -166,7 +166,7 @@ function Login() {
             </div>
 
             <div
-              className="form-row"
+              className="form-options-row"
               style={{ justifyContent: "space-between", alignItems: "center" }}
             >
               <label className="checkbox-label">

@@ -23,8 +23,9 @@
 }
 
 .auth-page {
-  min-height: 100vh;
+  height: 100svh;       
   width: 100%;
+  overflow: hidden;
   background: var(--color-bg);
   display: flex;
   align-items: center;
@@ -197,6 +198,15 @@
   text-transform: uppercase;
   letter-spacing: 0.05em;
   margin: 0 0 -4px 0;
+}
+
+.form-options-row {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 8px;
 }
 
 .form-row {
@@ -452,8 +462,6 @@
 @media (max-width: 480px) {
   .auth-page {
     padding: 16px;
-    align-items: flex-start;
-    padding-top: 32px;
   }
 
   .auth-card {
@@ -470,6 +478,10 @@
     gap: 16px;
   }
 
+  .form-options-row {
+    flex-direction: row;
+  }
+
   /* Step indicator responsive */
   .step-line {
     width: 40px;
@@ -484,10 +496,39 @@
     height: 28px;
     font-size: 12px;
   }
-  
-  /* Button group responsive */
-  .button-group {
+
+  .balance-inner {
     flex-direction: column;
+    gap: 12px;
+  }
+
+  .balance-divider {
+    width: 100%;      /* horizontal divider instead of vertical */
+    height: 1px;
+    align-self: stretch;
+  }
+
+  .balance-right {
+    text-align: left;   /* align left when stacked */
+    align-items: flex-start;
+  }
+
+  .sync-badge {
+    align-self: flex-start;
+  }
+
+  .balance-amount {
+    font-size: 26px;    /* slightly smaller to prevent wrapping */
+  }
+  
+ .button-group {
+    flex-direction: row; /* keep all pairs side by side */
+  }
+
+  .button-group .btn-primary,
+  .button-group .btn-secondary {
+    flex: 1;
+    min-width: 0;
   }
 }
 
