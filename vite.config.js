@@ -7,12 +7,16 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
-      includeAssets: [
-        'favicon.ico',
-        'apple-touch-icon.png',
-        'masked-icon.svg'
-      ],
+        registerType: 'autoUpdate',
+        workbox: {
+          navigateFallback: '/index.html',
+          navigateFallbackDenylist: [/^\/api/],
+        },
+        includeAssets: [
+          'favicon.ico',
+          'apple-touch-icon.png',
+          'masked-icon.svg'
+        ],
       manifest: {
         name: 'SyncPoint',
         short_name: 'SyncPoint',

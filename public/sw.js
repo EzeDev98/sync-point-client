@@ -7,6 +7,7 @@ const CACHE_NAME = `syncpoint-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline.html';
 const SHELL_URL = '/index.html';
 
+
 const STATIC_ASSETS = [
   '/',
   '/index.html',
