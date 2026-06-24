@@ -5,7 +5,7 @@ import { syncPendingTransactions, startAutoSync, isOnline, getSyncBadgeCount } f
 import { clearAllTransactions, getAllTransactions } from "../services/indexedDbService";
 import { isEncryptionReady, restoreEncryption } from "../services/cryptoService";
 import { logoutUser } from "../services/api";
-import "../styles/auth.css";
+import "../styles/dashboard.css";
 
 /**
  * Resolve the display icon for a transaction.

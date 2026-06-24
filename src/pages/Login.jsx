@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { loginUser, checkPinSet } from "../services/api";
 import { initializeEncryption } from "../services/cryptoService";
-import "../styles/auth.css";
+import "../styles/login.css";
 
 function Login() {
   const navigate = useNavigate();
