@@ -1,8 +1,6 @@
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:2000/api/v1";
-
-function getToken() {
-  return sessionStorage.getItem("sessionToken") || null;
-}
+import { getValidToken } from "./token";
+// const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:2000/api/v1";
+const BASE_URL = "http://localhost:2000/api/v1";
 
 function getPhoneNumber() {
   return sessionStorage.getItem("phoneNumber") || null;
@@ -56,7 +54,7 @@ export async function loginUser(phoneNumber, password) {
 // CONFIRM PIN SET 
 // ============================================
 export async function checkPinSet(walletId) {
-  const token = getToken();
+  const token = await getValidToken();
   if (!token) {
     throw new Error("No authentication token found. Please log in again.");
   }
@@ -89,7 +87,7 @@ export async function setWalletPin(pin, confirmNewPin) {
     throw new Error("Phone number not found. Please log in again.");
   }
 
-  const token = getToken();
+  const token = await getValidToken();
   if (!token) {
     throw new Error("No authentication token found. Please log in again.");
   }
@@ -113,7 +111,7 @@ export async function setWalletPin(pin, confirmNewPin) {
 // WALLET LOGOUT 
 // ============================================
 export async function logoutUser() {
-  const token = getToken();
+  const token = await getValidToken();
   if (!token) {
     throw new Error("No authentication token found.");
   }
@@ -141,11 +139,16 @@ export async function fundOfflineWallet({ amount, description, transactionPin, r
     throw new Error("Phone number not found. Please log in again.");
   }
 
+  const token = await getValidToken();
+  if (!token) {
+    throw new Error("No authentication token found.");
+  }
+
   const response = await fetch(`${BASE_URL}/wallet/funding/offline`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${getToken()}`,
+      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ phoneNumber, amount, description, transactionPin, requestRef }),
   });
@@ -165,11 +168,16 @@ export async function transferToOnline({ amount, description, transactionPin, re
     throw new Error("Phone number not found. Please log in again.");
   }
 
+   const token = await getValidToken();
+    if (!token) {
+      throw new Error("No authentication token found.");
+    }
+
   const response = await fetch(`${BASE_URL}/wallet/transfer/online`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${getToken()}`,
+      Authorization: `Bearer ${token}`,
     },
     body: JSON.stringify({ phoneNumber, amount, description, transactionPin, requestRef }),
   });
@@ -184,7 +192,7 @@ export async function transferToOnline({ amount, description, transactionPin, re
 // VERIFY WALLET PIN 
 // ============================================
 export async function verifyWalletPin(walletId, pin) {
-  const token = getToken();
+  const token = await getValidToken();
   if (!token) {
     throw new Error("No authentication token found. Please log in again.");
   }
@@ -215,7 +223,7 @@ export async function verifyWalletPin(walletId, pin) {
 // ============================================
 export async function syncTransaction({transactionRef, requestRef, type, entryType, status, amount, currency, description, senderWalletId, senderPhone, senderName, receiverWalletId, receiverPhone, receiverName, createdAt, }) {
 
-  const token = getToken();
+  const token = await getValidToken();
   if (!token) {
     throw new Error("No authentication token found. Please log in again.");
   }
@@ -241,7 +249,7 @@ export async function syncTransaction({transactionRef, requestRef, type, entryTy
 // FETCH UPDATED BALANCE
 // ============================================
 export async function fetchUpdatedBalance(walletId) {
-  const token = getToken();
+  const token = await getValidToken();
   if (!token) {
     throw new Error("No authentication token found. Please log in again.");
   }
@@ -256,5 +264,25 @@ export async function fetchUpdatedBalance(walletId) {
   if (!response.ok) {
     throw new Error(data.detail || data.message || "Failed to fetch balance.");
   }
+  return data;
+}
+
+export async function refreshToken() {
+
+  const refreshToken = sessionStorage.getItem("refreshToken");
+  if (!refreshToken) {
+    throw new Error("NO_REFRESH_TOKEN");
+  }
+
+  const response = await fetch(`${BASE_URL}/wallet/refresh-token`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refreshToken }),
+  });
+
+  if (!response.ok) throw new Error("REFRESH_FAILED");
+
+  const data = await response.json();
+
   return data;
 }

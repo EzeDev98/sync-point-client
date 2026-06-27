@@ -60,7 +60,6 @@ function Login() {
     try {
       const data = await loginUser(formData.phoneNumber, formData.password);
 
-      sessionStorage.setItem("sessionToken", data.token);
       sessionStorage.setItem("phoneNumber", data.phone_number);
       sessionStorage.setItem("username", data.username);
       sessionStorage.setItem("email", data.email);
@@ -71,6 +70,11 @@ function Login() {
       sessionStorage.setItem("middleName", data.middle_name);
       sessionStorage.setItem("lastName", data.last_name);
       sessionStorage.setItem("mirrorBalance", data.mirror_balance);
+      sessionStorage.setItem("sessionToken", data.token);
+      sessionStorage.setItem("refreshToken", data.refreshToken);
+      sessionStorage.setItem("accessTokenExpiresIn", data.accessTokenExpiresIn); 
+      sessionStorage.setItem("refreshTokenExpiresIn", data.refreshTokenExpiresIn);
+      sessionStorage.setItem("tokenIssuedAt", Date.now().toString());
 
       // ── Encryption initialization ────────────────────────────────────
       // This was previously missing entirely. Without this call, the DEK

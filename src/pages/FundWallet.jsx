@@ -71,6 +71,30 @@ function FundWallet() {
     return newErrors;
   }
 
+  function getFullName() {
+    const firstName = sessionStorage.getItem("firstName") || "";
+    const middleName = sessionStorage.getItem("middleName") || "";
+    const lastName = sessionStorage.getItem("lastName") || "";
+
+    return [firstName, middleName, lastName]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+  }
+
+  function saveNotification(notification) {
+    const existing =
+      JSON.parse(sessionStorage.getItem("notifications") || "[]");
+
+    existing.unshift(notification);
+
+    // keep only latest 50
+    sessionStorage.setItem(
+      "notifications",
+      JSON.stringify(existing.slice(0, 50))
+    );
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
 
@@ -104,6 +128,18 @@ function FundWallet() {
         const newBalance = currentBalance + amount;
         sessionStorage.setItem("offlineBalance", newBalance.toString());
 
+        const senderName = getFullName();
+
+        saveNotification({
+          id: crypto.randomUUID(),
+          type: "fund",
+          read: false,
+          title: "Offline Wallet Funded",
+          desc: `${senderName} funded offline wallet with ₦${amount.toLocaleString()}`,
+          amount,
+          time: new Date().toISOString(),
+        });
+
         setSuccessModal({
           show: true,
           message: `₦${amount.toLocaleString()} has been added to your offline wallet successfully. New balance: ₦${newBalance.toLocaleString()}`,
@@ -114,6 +150,18 @@ function FundWallet() {
         const currentBalance = getCurrentOfflineBalance();
         const newBalance = currentBalance - amount;
         sessionStorage.setItem("offlineBalance", newBalance.toString());
+
+        const senderName = getFullName();
+
+        saveNotification({
+          id: crypto.randomUUID(),
+          type: "transfer",
+          read: false,
+          title: "Transfer To Online Account",
+          desc: `${senderName} transferred ₦${amount.toLocaleString()} to online account`,
+          amount,
+          time: new Date().toISOString(),
+        });
         
         setSuccessModal({
           show: true,

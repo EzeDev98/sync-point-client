@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { useEffect } from "react";
 import Register from "./pages/Register";
 import Login from "./pages/Login"; 
 import SetPin from "./pages/SetPin";
@@ -7,9 +8,21 @@ import FundWallet from "./pages/FundWallet";
 import ReceivePayment from "./pages/ReceivePayment";
 import SendMoney from "./pages/SendMoney";
 import PinVerification from "./pages/PinVerification";
+import { clearTokenSession } from "./services/sessionUtils";
 
 
 function App() {
+  useEffect(() => {
+  function handleSessionExpired() {
+    clearTokenSession();
+
+    sessionStorage.setItem("sessionExpiredMessage", "Your session has expired. Please sign in again.");
+    window.location.replace("/login");
+  }
+  window.addEventListener("session-expired", handleSessionExpired);
+  return () => window.removeEventListener("session-expired", handleSessionExpired);
+}, []);
+
   return (
     <BrowserRouter>
       <Routes>

@@ -205,6 +205,29 @@
 
 .sync-dot.pending { background: #BA7517; }
 
+.sync-result-container {
+  min-height: 36px; /* reserve space */
+  margin-top: 10px;
+}
+
+.sync-result-message {
+  font-size: 11.5px;
+  text-align: center;
+  padding: 6px 10px;
+  border-radius: 8px;
+  margin: 0;
+}
+
+.sync-result-message.success {
+  color: #085041;
+  background: #E1F5EE;
+}
+
+.sync-result-message.error {
+  color: #DC2626;
+  background: #FEE2E2;
+}
+
 /* ACTIONS */
 .actions-grid {
   display: grid;
@@ -242,7 +265,27 @@
   border-color: #9FE1CB;
 }
 
-.action-label { font-size: 11px; color: #6B7280; font-weight: 500; }
+.action-label { 
+  font-size: 11px; 
+  color: #6B7280; 
+  font-weight: 500; 
+  min-width: 50px;
+  text-align: center;
+}
+
+.spin-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: spin 0.7s linear infinite;
+  transform-origin: center;
+  will-change: transform;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
 
 /* TRANSACTIONS */
 .section-header {
@@ -476,33 +519,30 @@
 
 .see-all-notif:hover { text-decoration: underline; }
 
-/* RESPONSIVE */
 @media (max-width: 480px) {
-  .sp-body { padding: 0 16px; }
-  .sp-header { padding: 16px 16px 10px; }
-  .balance-amount { font-size: 19px; }
-  .actions-grid { gap: 8px; }
-  .action-icon { width: 44px; height: 44px; }
-
-  /* Balance card stacks vertically on small screens */
   .balance-inner {
-    flex-direction: column;
-    gap: 12px;
+    flex-direction: row;
+    gap: 10px;
+  }
+
+  .balance-left,
+  .balance-right {
+    flex: 1;
+    min-width: 0;
   }
 
   .balance-divider {
-    width: 100%;
-    height: 1px;
-    align-self: stretch;
+    width: 1px;
+    height: auto;
   }
 
   .balance-right {
-    text-align: left;
-    align-items: flex-start;
+    text-align: right;
+    align-items: flex-end;
   }
 
   .sync-badge {
-    align-self: flex-start;
+    align-self: flex-end;
   }
 }
 
