@@ -4,12 +4,13 @@ import { ArrowLeft } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Html5Qrcode } from "html5-qrcode";
 import { saveTransaction, updateTransactionStatus, getTransactionByRef } from "../services/indexedDbService";
+import { calculateOfflineBalance } from "../services/walletLedger";
 import "../styles/auth.css";
 
 function ReceivePayment() {
   const navigate = useNavigate();
 
-  const [screen, setScreen] = useState("form"); // form | qr | confirm | success
+  const [screen, setScreen] = useState("form");
   const [formData, setFormData] = useState({ amount: "", description: "" });
   const [errors, setErrors] = useState({});
   const [requestRef, setRequestRef] = useState("");
@@ -23,17 +24,6 @@ function ReceivePayment() {
   const scannerRef = useRef(null);
   const isScannerRunningRef = useRef(false);
   const isMountedRef = useRef(true);
-
-  // ── Race-condition fix ─────────────────────────────────────────────────
-  // Same root cause as SendMoney.jsx: html5-qrcode throws "Cannot transition
-  // to a new state, already under transition" when stop() is called while
-  // a start() on the same instance is still pending. Reliable trigger:
-  // React StrictMode's mount → unmount → re-mount cycle in development,
-  // which fires the scanner effect's cleanup before the initial start()
-  // promise has resolved.
-  //
-  // pendingTransitionRef serializes every start/stop call so they always
-  // run one after another rather than overlapping on the same instance.
   const pendingTransitionRef = useRef(Promise.resolve());
 
   const scanContextRef = useRef({
@@ -42,10 +32,10 @@ function ReceivePayment() {
     receiverPhone: "",
   });
 
-  const receiverWalletId = sessionStorage.getItem("walletId");
-  const receiverPhone = sessionStorage.getItem("phoneNumber");
-  const firstName = sessionStorage.getItem("firstName") || "";
-  const lastName = sessionStorage.getItem("lastName") || "";
+  const receiverWalletId = localStorage.getItem("walletId") || sessionStorage.getItem("walletId");
+  const receiverPhone = localStorage.getItem("phoneNumber") || sessionStorage.getItem("phoneNumber");
+  const firstName = localStorage.getItem("firstName") || sessionStorage.getItem("firstName") || "";
+  const lastName = localStorage.getItem("lastName") || sessionStorage.getItem("lastName") || "";
   const receiverName = `${firstName} ${lastName}`.trim() || "User";
   const isSessionValid = !!receiverWalletId && !!receiverPhone;
 
@@ -67,7 +57,6 @@ function ReceivePayment() {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
-      // Chain the final stop behind whatever transition is already pending
       pendingTransitionRef.current = pendingTransitionRef.current
         .catch(() => {})
         .then(() => {
@@ -110,10 +99,6 @@ function ReceivePayment() {
     return () => clearInterval(timerRef.current);
   }, [screen]);
 
-  /**
-   * Stop the scanner, serialized behind any in-flight transition.
-   * Never calls stop() concurrently with an in-progress start().
-   */
   const stopScanner = useCallback(async () => {
     const operation = pendingTransitionRef.current
       .catch(() => {})
@@ -205,11 +190,8 @@ function ReceivePayment() {
 
         await updateTransactionStatus(senderPayload.transactionRef, "SUCCESS");
 
-        const currentBalance = Number(
-          sessionStorage.getItem("offlineBalance") || 0
-        );
-        const newBalance = currentBalance + Number(senderPayload.amount);
-        sessionStorage.setItem("offlineBalance", newBalance.toString());
+        // Recalculate balance from ledger — no manual arithmetic
+        const newBalance = await calculateOfflineBalance();
         window.dispatchEvent(
           new CustomEvent("balance-updated", { detail: { balance: newBalance } })
         );
@@ -230,13 +212,6 @@ function ReceivePayment() {
 
   const onScanError = useCallback(() => {}, []);
 
-  /**
-   * Start the scanner, serialized behind any in-flight transition.
-   *
-   * Distinguishes a genuine permission/hardware failure from the internal
-   * state-transition race — the race is not a permission problem and
-   * should not surface "check camera permissions" to the user.
-   */
   const startSenderScanner = useCallback(async () => {
     const operation = pendingTransitionRef.current
       .catch(() => {})
@@ -261,7 +236,6 @@ function ReceivePayment() {
             await scannerRef.current.stop().catch(() => {});
           }
         } catch (err) {
-          const errName = err?.name || "";
           const isTransitionRace =
             typeof err?.message === "string" &&
             err.message.includes("already under transition");
@@ -278,6 +252,7 @@ function ReceivePayment() {
 
           if (!isMountedRef.current) return;
 
+          const errName = err?.name || "";
           const isPermissionError =
             errName === "NotAllowedError" ||
             errName === "PermissionDeniedError" ||
@@ -310,9 +285,9 @@ function ReceivePayment() {
   }, [screen, startSenderScanner, stopScanner]);
 
   function formatTime(seconds) {
-    const m = String(Math.floor(seconds / 60)).padStart(2, "0");
-    const s = String(seconds % 60).padStart(2, "0");
-    return `${m}:${s}`;
+    const minutes = String(Math.floor(seconds / 60)).padStart(2, "0");
+    const second = String(seconds % 60).padStart(2, "0");
+    return `${minutes}:${second}`;
   }
 
   function handleChange(e) {
@@ -541,12 +516,13 @@ function ReceivePayment() {
           </div>
 
           {isProcessing && (
-            <div className="info-banner">
-              ⏳ Verifying payment...
-            </div>
+            <div className="info-banner">⏳ Verifying payment...</div>
           )}
 
-          <div className="info-banner" style={{ background: "#FAEEDA", borderColor: "#F6C675", color: "#633806" }}>
+          <div
+            className="info-banner"
+            style={{ background: "#FAEEDA", borderColor: "#F6C675", color: "#633806" }}
+          >
             ⚠️ Only scan a QR shown live on the sender's device. Do not scan screenshots.
           </div>
 

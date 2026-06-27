@@ -84,6 +84,7 @@ function openDB() {
  * @param {string} [transaction.createdAt]    — defaults to now
  */
 export async function saveTransaction(transaction) {
+  
   if (!isEncryptionReady()) {
     throw new Error("[IndexedDB] Encryption not ready. Please log in again.");
   }
@@ -428,4 +429,24 @@ export async function clearAllTransactions() {
     };
     req.onerror = (event) => reject(event.target.error);
   });
+}
+
+
+/**
+ * Save a financial ledger transaction (FUND, TRANSFER_TO_ONLINE, etc.)
+ * that affects the wallet balance.
+ *
+ * This is distinct from saveTransaction() which is for P2P transfers.
+ * Both ultimately write to the same store — the distinction is conceptual.
+ *
+ * entryType must be "CREDIT" or "DEBIT".
+ */
+export async function saveLedgerTransaction(transaction) {
+  if (!transaction.transactionRef) {
+    throw new Error("[IndexedDB] saveLedgerTransaction: transactionRef is required.");
+  }
+  if (!transaction.entryType || !["CREDIT", "DEBIT"].includes(transaction.entryType)) {
+    throw new Error("[IndexedDB] saveLedgerTransaction: entryType must be CREDIT or DEBIT.");
+  }
+  return saveTransaction(transaction);
 }

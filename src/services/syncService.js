@@ -11,6 +11,7 @@ import {
   getPendingCount,
 } from "./indexedDbService";
 import { syncTransaction, fetchUpdatedBalance } from "./api";
+import { calculateOfflineBalance } from "./walletLedger";
 
 /**
  * Sync all PENDING transactions to the server.
@@ -92,13 +93,16 @@ export async function syncPendingTransactions(onProgress) {
   }
 
   // Refresh local balance from server after sync
-  const walletId = sessionStorage.getItem("walletId");
+  const walletId = localStorage.getItem("walletId") || sessionStorage.getItem("walletId");
   if (walletId) {
     try {
-      const updatedBalance = await fetchUpdatedBalance(walletId);
-      sessionStorage.setItem("offlineBalance", updatedBalance.toString());
+      await fetchUpdatedBalance(walletId);
+      // After sync, the server balance is authoritative.
+      // We don't store it directly — instead fire the event so
+      // Dashboard recalculates from the now-synced ledger.
+      const ledgerBalance = await calculateOfflineBalance();
       window.dispatchEvent(
-        new CustomEvent("balance-updated", { detail: { balance: updatedBalance } })
+        new CustomEvent("balance-updated", { detail: { balance: ledgerBalance } })
       );
     } catch (err) {
       console.error("[SyncService] Balance refresh failed:", err.message);

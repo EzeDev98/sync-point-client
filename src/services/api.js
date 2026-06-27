@@ -72,7 +72,6 @@ export async function checkPinSet(walletId) {
       403: "Access denied while verifying PIN status.",
       500: "Server error while verifying PIN status. Please try again.",
     };
-    sessionStorage.clear();
     throw new Error(data.detail || data.message || statusMessages[response.status] || "Unable to verify PIN status. Please try again.");
   }
   return data;
@@ -269,15 +268,15 @@ export async function fetchUpdatedBalance(walletId) {
 
 export async function refreshToken() {
 
-  const refreshToken = sessionStorage.getItem("refreshToken");
-  if (!refreshToken) {
+  const storedRefreshToken = localStorage.getItem("refreshToken");
+  if (!storedRefreshToken) {
     throw new Error("NO_REFRESH_TOKEN");
   }
 
   const response = await fetch(`${BASE_URL}/wallet/refresh-token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refreshToken }),
+    body: JSON.stringify({ refreshToken: storedRefreshToken }),
   });
 
   if (!response.ok) throw new Error("REFRESH_FAILED");

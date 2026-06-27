@@ -1,48 +1,63 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { loginUser, checkPinSet } from "../services/api";
-import { initializeEncryption } from "../services/cryptoService";
+import { persistValue, hasResumableSession } from "../services/sessionUtils";
+import { refreshOnStartup } from "../services/token";
 import "../styles/login.css";
 
 function Login() {
   const navigate = useNavigate();
   const [showPinModal, setShowPinModal] = useState(false);
   const [errorModal, setErrorModal] = useState({ show: false, message: "" });
+  const [isCheckingSession, setIsCheckingSession] = useState(true);
 
   const [formData, setFormData] = useState({
     phoneNumber: "",
     password: "",
     rememberMe: false,
   });
-
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // ── Startup check: resume session if possible ────────────────────────────
+  useEffect(() => {
+    async function checkExistingSession() {
+      if (!hasResumableSession()) {
+        setIsCheckingSession(false);
+        return;
+      }
+
+      try {
+        // Refresh token exists — get a new access token silently
+        await refreshOnStartup();
+        // Success — go straight to PIN verification
+        navigate("/verifypin", { replace: true });
+      } catch {
+        // Refresh token is expired or invalid — show login normally
+        setIsCheckingSession(false);
+      }
+    }
+
+    checkExistingSession();
+  }, [navigate]);
+
   function handleChange(e) {
     const { name, value, type, checked } = e.target;
-    const newValue = type === "checkbox" ? checked : value;
-
-    setFormData((prev) => ({ ...prev, [name]: newValue }));
-
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
+    setFormData((prev) => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   }
 
   function validate() {
     const newErrors = {};
-
     if (!formData.phoneNumber.trim()) {
       newErrors.phoneNumber = "Phone number is required";
     } else if (!/^\d{10,11}$/.test(formData.phoneNumber.replace(/\D/g, ""))) {
       newErrors.phoneNumber = "Enter a valid phone number (10-11 digits)";
     }
-
     if (!formData.password) {
       newErrors.password = "Password is required";
     }
-
     return newErrors;
   }
 
@@ -60,42 +75,36 @@ function Login() {
     try {
       const data = await loginUser(formData.phoneNumber, formData.password);
 
+      // ── Persistent identity (survives app closure) ─────────────────────
+      persistValue("walletId", data.wallet_id);
+      persistValue("userId", data.user_id);
+      persistValue("phoneNumber", data.phone_number);
+      persistValue("username", data.username);
+      persistValue("email", data.email);
+      persistValue("userRefId", data.user_ref_id);
+      persistValue("firstName", data.first_name);
+      persistValue("middleName", data.middle_name);
+      persistValue("lastName", data.last_name);
+      persistValue("mirrorBalance", data.mirror_balance);
+      persistValue("refreshToken", data.refreshToken);
+      persistValue("refreshTokenExpiresIn", data.refreshTokenExpiresIn);
+      persistValue("tokenIssuedAt", Date.now().toString());
+
+      // ── Temporary session (gone on tab close) ──────────────────────────
+      sessionStorage.setItem("sessionToken", data.token);
+      sessionStorage.setItem("accessTokenExpiresIn", data.accessTokenExpiresIn);
+
+      // Mirror persistent values into sessionStorage so existing code that
+      // reads sessionStorage.getItem("walletId") etc. keeps working
+      sessionStorage.setItem("walletId", data.wallet_id);
+      sessionStorage.setItem("userId", data.user_id);
       sessionStorage.setItem("phoneNumber", data.phone_number);
       sessionStorage.setItem("username", data.username);
       sessionStorage.setItem("email", data.email);
       sessionStorage.setItem("userRefId", data.user_ref_id);
-      sessionStorage.setItem("walletId", data.wallet_id);
-      sessionStorage.setItem("userId", data.user_id);
       sessionStorage.setItem("firstName", data.first_name);
       sessionStorage.setItem("middleName", data.middle_name);
       sessionStorage.setItem("lastName", data.last_name);
-      sessionStorage.setItem("mirrorBalance", data.mirror_balance);
-      sessionStorage.setItem("sessionToken", data.token);
-      sessionStorage.setItem("refreshToken", data.refreshToken);
-      sessionStorage.setItem("accessTokenExpiresIn", data.accessTokenExpiresIn); 
-      sessionStorage.setItem("refreshTokenExpiresIn", data.refreshTokenExpiresIn);
-      sessionStorage.setItem("tokenIssuedAt", Date.now().toString());
-
-      // ── Encryption initialization ────────────────────────────────────
-      // This was previously missing entirely. Without this call, the DEK
-      // (Data Encryption Key) used to encrypt every IndexedDB transaction
-      // record is never generated, and sessionStorage["wrappedDEK"] never
-      // gets created. Every subsequent call to saveTransaction/getAllTransactions
-      // would throw "[IndexedDB] Encryption not ready" because there was
-      // nothing for restoreEncryption() to restore on later page loads.
-      //
-      // initializeEncryption(data.token):
-      //   1. Generates a fresh random 256-bit DEK
-      //   2. Derives a KEK from data.token via PBKDF2
-      //   3. Wraps the DEK with the KEK and stores the wrapped form in
-      //      sessionStorage["wrappedDEK"]
-      //   4. Holds the raw (unwrapped) DEK in cryptoService's module memory
-      //      for the rest of this session
-      //
-      // This must run with the SAME token value that Dashboard.jsx (and any
-      // other page) will later pass to restoreEncryption() after a reload —
-      // both read sessionStorage["token"], so they're now consistent.
-      await initializeEncryption(data.token);
 
       const pinSet = await checkPinSet(data.wallet_id);
 
@@ -113,6 +122,17 @@ function Login() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  // Show nothing while checking for an existing session
+  if (isCheckingSession) {
+    return (
+      <div className="auth-page">
+        <div className="auth-card" style={{ textAlign: "center", padding: "48px 24px" }}>
+          <p style={{ color: "#6B7280", fontSize: 14 }}>Checking session...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -138,9 +158,7 @@ function Login() {
                   className={errors.phoneNumber ? "has-error" : ""}
                 />
               </div>
-              {errors.phoneNumber && (
-                <p className="field-error">{errors.phoneNumber}</p>
-              )}
+              {errors.phoneNumber && <p className="field-error">{errors.phoneNumber}</p>}
             </div>
 
             <div className="form-field">
@@ -164,15 +182,10 @@ function Login() {
                   {showPassword ? "Hide" : "Show"}
                 </button>
               </div>
-              {errors.password && (
-                <p className="field-error">{errors.password}</p>
-              )}
+              {errors.password && <p className="field-error">{errors.password}</p>}
             </div>
 
-            <div
-              className="form-options-row"
-              style={{ justifyContent: "space-between", alignItems: "center" }}
-            >
+            <div className="form-options-row" style={{ justifyContent: "space-between", alignItems: "center" }}>
               <label className="checkbox-label">
                 <input
                   type="checkbox"
@@ -182,67 +195,48 @@ function Login() {
                 />
                 <span>Remember me</span>
               </label>
-
-              <Link to="/forgot-password" className="auth-link">
-                Forgot password?
-              </Link>
+              <Link to="/forgot-password" className="auth-link">Forgot password?</Link>
             </div>
           </div>
 
-          {errors.general && (
-            <p className="field-error">{errors.general}</p>
-          )}
+          {errors.general && <p className="field-error">{errors.general}</p>}
 
-          <button
-            type="submit"
-            className="btn-primary"
-            disabled={isSubmitting}
-          >
+          <button type="submit" className="btn-primary" disabled={isSubmitting}>
             {isSubmitting ? "Signing in..." : "Sign In"}
           </button>
         </form>
 
         <div className="auth-links">
           <p className="auth-footer-text">
-            Don't have an account?
-            <Link to="/register" className="auth-link">
-              Create account
-            </Link>
+            Don't have an account?{" "}
+            <Link to="/register" className="auth-link">Create account</Link>
           </p>
         </div>
       </div>
 
-      {/* PIN setup modal */}
       {showPinModal && (
         <div className="modal-overlay">
           <div className="modal-card">
             <div className="modal-icon">🔐</div>
             <h2 className="modal-title">Set your transaction PIN</h2>
             <p className="modal-body">
-              To keep your wallet secure, you need to set a 4-digit transaction
-              PIN before you can access your dashboard.
+              To keep your wallet secure, you need to set a 4-digit transaction PIN
+              before you can access your dashboard.
             </p>
-            <button
-              className="btn-primary"
-              onClick={() => navigate("/set-pin")}
-            >
+            <button className="btn-primary" onClick={() => navigate("/set-pin")}>
               Set PIN now
             </button>
           </div>
         </div>
       )}
 
-      {/* Error modal */}
       {errorModal.show && (
         <div className="modal-overlay">
           <div className="modal-card">
             <div className="modal-icon">⚠️</div>
             <h2 className="modal-title">Login Failed</h2>
             <p className="modal-body">{errorModal.message}</p>
-            <button
-              className="btn-primary"
-              onClick={() => setErrorModal({ show: false, message: "" })}
-            >
+            <button className="btn-primary" onClick={() => setErrorModal({ show: false, message: "" })}>
               OK
             </button>
           </div>

@@ -2,30 +2,18 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, Eye, EyeOff, ArrowUpRight, ArrowDownLeft, Plus, RefreshCw, LogOut } from "lucide-react";
 import { syncPendingTransactions, startAutoSync, isOnline, getSyncBadgeCount } from "../services/syncService";
-import { clearAllTransactions, getAllTransactions } from "../services/indexedDbService";
-import { isEncryptionReady, restoreEncryption } from "../services/cryptoService";
-import { logoutUser } from "../services/api";
+import { getAllTransactions } from "../services/indexedDbService";
+import { requestLogout } from "../services/logoutManager";
+import { isEncryptionReady } from "../services/cryptoService";
+import { calculateOfflineBalance } from "../services/walletLedger";
 import "../styles/dashboard.css";
 
-/**
- * Resolve the display icon for a transaction.
- *
- * Fix: the original implementation checked tx.type against "send" / "receive" /
- * "fund" / "sync-tx". The actual data model (confirmed in indexedDbService,
- * SendMoney, ReceivePayment) always sets type: "TRANSFER" — direction is
- * carried by entryType: "DEBIT" | "CREDIT" instead. The old checks never
- * matched anything, so every transaction silently fell through to "•".
- */
 function getIcon(entryType) {
   if (entryType === "DEBIT") return "↗";
   if (entryType === "CREDIT") return "↙";
   return "•";
 }
 
-/**
- * Resolve the display label for a transaction.
- * Same root cause as getIcon — switched from tx.type to tx.entryType.
- */
 function getTxLabel(tx) {
   if (tx.entryType === "DEBIT") {
     return tx.receiverName ? `Sent to ${tx.receiverName}` : "Sent payment";
@@ -39,24 +27,17 @@ function getTxLabel(tx) {
 function Dashboard() {
   const navigate = useNavigate();
   const [balanceVisible, setBalanceVisible] = useState(false);
-  const [offlineBalance, setOfflineBalance] = useState(() =>
-    Number(sessionStorage.getItem("offlineBalance") || 0)
-  );
+  const [offlineBalance, setOfflineBalance] = useState(0);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState("");
   const [notifOpen, setNotifOpen] = useState(false);
+  const [logoutStep, setLogoutStep] = useState("idle");
+  const [logoutBlockModal, setLogoutBlockModal] = useState({ show: false, balance: 0 });
 
-  // Fix: MOCK_NOTIFICATIONS removed entirely. No notification service exists
-  // yet in this codebase, so the honest production state is an empty list,
-  // not fabricated data standing in for an unbuilt feature. The dropdown UI
-  // is preserved and will work correctly once a real notification source
-  // is wired in here.
   const [notifications, setNotifications] = useState(() => {
     try {
-      return JSON.parse(
-        sessionStorage.getItem("notifications") || "[]"
-      );
+      return JSON.parse(sessionStorage.getItem("notifications") || "[]");
     } catch {
       return [];
     }
@@ -69,61 +50,56 @@ function Dashboard() {
   const [loadError, setLoadError] = useState(null);
   const notifRef = useRef(null);
 
-  const firstName = sessionStorage.getItem("firstName") || "User";
-  const walletId = sessionStorage.getItem("walletId");
+  const firstName =
+    sessionStorage.getItem("firstName") ??
+    localStorage.getItem("firstName") ??
+    "User";
+
+  const lastName =
+    sessionStorage.getItem("lastName") ??
+    localStorage.getItem("lastName") ??
+    "";
+
+  const walletId =
+    sessionStorage.getItem("walletId") ??
+    localStorage.getItem("walletId");
+
   const isSessionValid = !!walletId;
 
   const initials =
     firstName.charAt(0).toUpperCase() +
-    (sessionStorage.getItem("lastName")?.charAt(0).toUpperCase() || "");
+    (lastName.charAt(0).toUpperCase() || "");
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  // Redirect immediately if there's no valid session — no UI flash
   useEffect(() => {
     if (!isSessionValid) {
       navigate("/login", { replace: true });
     }
   }, [isSessionValid, navigate]);
 
-  /**
-   * Ensure the DEK is available in memory before any encrypted read.
-   *
-   * Fix: the original component called getAllTransactions() / getSyncBadgeCount()
-   * directly with no readiness check anywhere. On a fresh page load the DEK
-   * only lives in cryptoService's module memory and does NOT survive a
-   * reload — sessionStorage only holds the *wrapped* DEK, which must be
-   * explicitly unwrapped via restoreEncryption(sessionToken) first.
-   *
-   * Uses the "sessionToken" key — matching what Login.jsx now writes via
-   * sessionStorage.setItem("sessionToken", data.token).
-   *
-   * Throws "SESSION_EXPIRED" if there's no token to restore with at all —
-   * callers treat that as a real expired-session case.
-   */
   const ensureEncryptionReady = useCallback(async () => {
     if (isEncryptionReady()) return;
-
-    const sessionToken = sessionStorage.getItem("sessionToken");
-    if (!sessionToken) {
-      throw new Error("SESSION_EXPIRED");
-    }
-
-    await restoreEncryption(sessionToken);
+    // Encryption must have been restored during PIN verification.
+    // If we arrive here without it the wallet is locked — send to PIN screen.
+    throw new Error("SESSION_EXPIRED");
   }, []);
 
   /**
-   * Load pending count + transaction list together.
-   * Used by initial mount, auto-sync completion, and manual sync completion.
+   * Load pending count, transaction list, and ledger balance together.
+   * Balance is always derived from IndexedDB — never from sessionStorage
+   * or localStorage — so it is always correct after app closure or reload.
    */
   const refreshData = useCallback(async () => {
     await ensureEncryptionReady();
-    const [count, txList] = await Promise.all([
+    const [count, txList, balance] = await Promise.all([
       getSyncBadgeCount(),
       getAllTransactions(),
+      calculateOfflineBalance(),
     ]);
     setPendingCount(count);
     setTransactions(txList);
+    setOfflineBalance(balance);
   }, [ensureEncryptionReady]);
 
   // Initial load on mount
@@ -165,8 +141,6 @@ function Dashboard() {
       try {
         await refreshData();
       } catch (err) {
-        // Auto-sync's data refresh failing shouldn't crash the dashboard —
-        // log it and leave the previously-loaded transaction list in place.
         console.error("[Dashboard] Post-sync refresh failed:", err);
       }
     });
@@ -174,13 +148,17 @@ function Dashboard() {
     return () => stopAutoSync();
   }, [isSessionValid, refreshData]);
 
-  // Listen for balance updates from sync service
+  // Listen for balance-updated events from other pages.
+  // When received, recalculate from the ledger to stay authoritative.
   useEffect(() => {
-    const handleBalanceUpdate = (event) => {
-      if (event.detail?.balance !== undefined) {
-        setOfflineBalance(event.detail.balance);
+    async function handleBalanceUpdate() {
+      try {
+        const balance = await calculateOfflineBalance();
+        setOfflineBalance(balance);
+      } catch (err) {
+        console.error("[Dashboard] Balance recalculation failed:", err);
       }
-    };
+    }
     window.addEventListener("balance-updated", handleBalanceUpdate);
     return () => window.removeEventListener("balance-updated", handleBalanceUpdate);
   }, []);
@@ -198,25 +176,16 @@ function Dashboard() {
 
   function markAsRead(id) {
     setNotifications((prev) => {
-      const updated = prev.map((n) =>
-        n.id === id ? { ...n, read: true } : n
-      );
-
-      sessionStorage.setItem("notifications",JSON.stringify(updated));
-
+      const updated = prev.map((n) => (n.id === id ? { ...n, read: true } : n));
+      sessionStorage.setItem("notifications", JSON.stringify(updated));
       return updated;
     });
   }
 
   function markAllRead() {
     setNotifications((prev) => {
-      const updated = prev.map((n) => ({
-        ...n,
-        read: true,
-      }));
-
-      sessionStorage.setItem("notifications",JSON.stringify(updated));
-
+      const updated = prev.map((n) => ({ ...n, read: true }));
+      sessionStorage.setItem("notifications", JSON.stringify(updated));
       return updated;
     });
   }
@@ -234,6 +203,7 @@ function Dashboard() {
     setIsSyncing(true);
     setSyncResult(null);
 
+    // Yield to the browser so the spinner paints before work begins
     await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
 
     const MIN_SPIN_MS = 600;
@@ -241,8 +211,7 @@ function Dashboard() {
 
     try {
       const result = await syncPendingTransactions();
-      
-      // Enforce minimum spinner duration so it never feels like a flash
+
       const elapsed = Date.now() - started;
       if (elapsed < MIN_SPIN_MS) {
         await new Promise((resolve) => setTimeout(resolve, MIN_SPIN_MS - elapsed));
@@ -269,17 +238,42 @@ function Dashboard() {
   async function handleLogout() {
     setIsLoggingOut(true);
     setLogoutError("");
-    try {
-      await logoutUser();
-      await clearAllTransactions();
-      sessionStorage.clear();
-      navigate("/login");
-    } catch (err) {
-      console.error("Logout error:", err);
-      setLogoutError(err.message || "Logout failed. Please try again.");
-    } finally {
-      setIsLoggingOut(false);
-    }
+    setLogoutStep("checking");
+
+    await requestLogout({
+      navigate,
+
+      onBlocked: ({ balance }) => {
+        sessionStorage.setItem(
+          "logoutBlockedMessage",
+          `You still have ₦${balance.toLocaleString()} in your offline wallet. ` +
+            `Transfer the remaining balance to your online account before logging out.`
+        );
+        setIsLoggingOut(false);
+        setLogoutStep("idle");
+        setLogoutBlockModal({ show: true, balance });
+      },
+
+      onSyncing: () => {
+        setLogoutStep("syncing");
+      },
+
+      onSyncDone: (result) => {
+        setSyncResult(result);
+      },
+
+      onError: (message) => {
+        setLogoutError(message);
+        setLogoutStep("error");
+        setIsLoggingOut(false);
+      },
+
+      onSuccess: () => {
+        setLogoutStep("idle");
+      },
+    });
+
+    setIsLoggingOut(false);
   }
 
   if (!isSessionValid) return null;
@@ -291,8 +285,19 @@ function Dashboard() {
         <div className="sp-logo">
           <div className="sp-logo-icon">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path d="M7 1C4.5 1 2.5 2.8 2 5" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-              <path d="M12 9C11.5 11.2 9.5 13 7 13C4.5 13 2.5 11.2 2 9" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="2 2" />
+              <path
+                d="M7 1C4.5 1 2.5 2.8 2 5"
+                stroke="white"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+              />
+              <path
+                d="M12 9C11.5 11.2 9.5 13 7 13C4.5 13 2.5 11.2 2 9"
+                stroke="white"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeDasharray="2 2"
+              />
               <circle cx="7" cy="7" r="1.5" fill="white" stroke="white" strokeWidth="1" />
             </svg>
           </div>
@@ -342,7 +347,8 @@ function Dashboard() {
                       <div className="notif-content">
                         <div className="notif-title">{notif.title}</div>
                         <div className="notif-desc">{notif.desc}</div>
-                        <div className="notif-time">{new Date(notif.time).toLocaleString("en-NG", {
+                        <div className="notif-time">
+                          {new Date(notif.time).toLocaleString("en-NG", {
                             day: "numeric",
                             month: "short",
                             hour: "2-digit",
@@ -389,9 +395,11 @@ function Dashboard() {
                   aria-label="Toggle balance"
                   onClick={() => setBalanceVisible((prev) => !prev)}
                 >
-                  {balanceVisible
-                    ? <Eye size={16} strokeWidth={1.8} />
-                    : <EyeOff size={16} strokeWidth={1.8} />}
+                  {balanceVisible ? (
+                    <Eye size={16} strokeWidth={1.8} />
+                  ) : (
+                    <EyeOff size={16} strokeWidth={1.8} />
+                  )}
                 </button>
               </div>
             </div>
@@ -399,9 +407,7 @@ function Dashboard() {
             <div className="balance-divider" />
 
             <div className="balance-right">
-              <span className="balance-sub">
-                Wallet · Last updated just now
-              </span>
+              <span className="balance-sub">Wallet · Last updated just now</span>
               <div className={`sync-badge ${isSyncing ? "pending" : ""}`}>
                 <span className={`sync-dot ${isSyncing ? "pending" : ""}`} />
                 <span>
@@ -414,7 +420,6 @@ function Dashboard() {
               </div>
             </div>
           </div>
-
         </div>
 
         {/* Sync result message */}
@@ -453,17 +458,20 @@ function Dashboard() {
             <span className="action-label">Fund</span>
           </button>
 
-          <button className="action-btn" onClick={handleSync} disabled={isSyncing}>
-              <div className="action-icon">
-                <span className={isSyncing ? "spin-wrap" : ""}>
-                  <RefreshCw size={18} strokeWidth={1.8} />
-                </span>
-              </div>
-              <span className="action-label">
-                {isSyncing ? "Syncing" : "Sync"}
+          <button
+            className="action-btn"
+            onClick={handleSync}
+            disabled={isSyncing}
+          >
+            <div className="action-icon">
+              <span className={isSyncing ? "spin-wrap" : ""}>
+                <RefreshCw size={18} strokeWidth={1.8} />
               </span>
+            </div>
+            <span className="action-label">
+              {isSyncing ? "Syncing" : "Sync"}
+            </span>
           </button>
-
         </div>
 
         {/* TRANSACTIONS */}
@@ -474,36 +482,46 @@ function Dashboard() {
 
         <div className="tx-list">
           {isLoading ? (
-            <div style={{
-              textAlign: "center",
-              padding: "32px 0",
-              color: "#9CA3AF",
-              fontSize: 13,
-            }}>
+            <div
+              style={{
+                textAlign: "center",
+                padding: "32px 0",
+                color: "#9CA3AF",
+                fontSize: 13,
+              }}
+            >
               Loading transactions...
             </div>
           ) : loadError ? (
-            <div style={{
-              textAlign: "center",
-              padding: "32px 0",
-              color: "#DC2626",
-              fontSize: 13,
-            }}>
+            <div
+              style={{
+                textAlign: "center",
+                padding: "32px 0",
+                color: "#DC2626",
+                fontSize: 13,
+              }}
+            >
               {loadError}
             </div>
           ) : transactions.length === 0 ? (
-            <div style={{
-              textAlign: "center",
-              padding: "32px 0",
-              color: "#9CA3AF",
-              fontSize: 13,
-            }}>
+            <div
+              style={{
+                textAlign: "center",
+                padding: "32px 0",
+                color: "#9CA3AF",
+                fontSize: 13,
+              }}
+            >
               No transactions yet
             </div>
           ) : (
             transactions.map((tx) => (
               <div className="tx-item" key={tx.transactionRef}>
-                <div className={`tx-icon ${tx.entryType === "DEBIT" ? "send" : "receive"}`}>
+                <div
+                  className={`tx-icon ${
+                    tx.entryType === "DEBIT" ? "send" : "receive"
+                  }`}
+                >
                   {getIcon(tx.entryType)}
                 </div>
                 <div className="tx-info">
@@ -518,7 +536,11 @@ function Dashboard() {
                   </div>
                 </div>
                 <div className="tx-right">
-                  <div className={`tx-amount ${tx.entryType === "CREDIT" ? "credit" : "debit"}`}>
+                  <div
+                    className={`tx-amount ${
+                      tx.entryType === "CREDIT" ? "credit" : "debit"
+                    }`}
+                  >
                     {tx.entryType === "CREDIT"
                       ? `+₦${Number(tx.amount).toLocaleString()}`
                       : `-₦${Number(tx.amount).toLocaleString()}`}
@@ -540,7 +562,10 @@ function Dashboard() {
       <div className="sp-divider" />
       <div className="logout-section">
         {logoutError && (
-          <p className="field-error" style={{ textAlign: "center", marginBottom: 8 }}>
+          <p
+            className="field-error"
+            style={{ textAlign: "center", marginBottom: 8 }}
+          >
             {logoutError}
           </p>
         )}
@@ -550,12 +575,49 @@ function Dashboard() {
           disabled={isLoggingOut}
         >
           <LogOut size={14} strokeWidth={1.8} />
-          {isLoggingOut ? "Logging out..." : "Log out"}
+          {logoutStep === "checking" && "Checking wallet..."}
+          {logoutStep === "syncing" && "Syncing transactions..."}
+          {logoutStep === "error" && "Retry logout"}
+          {logoutStep === "idle" &&
+            (isLoggingOut ? "Logging out..." : "Log out")}
         </button>
       </div>
+
+      {/* LOGOUT BLOCKED MODAL */}
+      {logoutBlockModal.show && (
+        <div className="modal-overlay">
+          <div className="modal-card">
+            <div className="modal-icon">⚠️</div>
+            <h2 className="modal-title">Cannot Log Out Yet</h2>
+            <p className="modal-body">
+              You still have{" "}
+              <strong>₦{logoutBlockModal.balance.toLocaleString()}</strong> in
+              your offline wallet. You must transfer your remaining balance to
+              your online account before logging out.
+            </p>
+            <button
+              className="btn-primary"
+              onClick={() => {
+                setLogoutBlockModal({ show: false, balance: 0 });
+                navigate("/fund", {
+                  state: { autoTab: "online", fromLogout: true },
+                });
+              }}
+            >
+              Transfer Balance Now
+            </button>
+            <button
+              className="logout-btn"
+              style={{ marginTop: 8 }}
+              onClick={() => setLogoutBlockModal({ show: false, balance: 0 })}
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 export default Dashboard;
-

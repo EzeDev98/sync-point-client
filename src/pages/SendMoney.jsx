@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 import { QRCodeSVG } from "qrcode.react";
 import { saveTransaction, updateTransactionStatus } from "../services/indexedDbService";
+import { calculateOfflineBalance } from "../services/walletLedger";
 import "../styles/auth.css";
 
 function SendMoney() {
@@ -16,41 +17,27 @@ function SendMoney() {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorModal, setErrorModal] = useState({ show: false, message: "" });
+  const [offlineBalance, setOfflineBalance] = useState(0);
 
   const html5QrCodeRef = useRef(null);
   const isMountedRef = useRef(true);
-
-  // ── Scanner state machine ────────────────────────────────────────────
-  // Root cause of "Cannot clear while scan is ongoing": the previous fix
-  // serialized start/stop calls through a promise chain, but only flipped
-  // isScannerRunningRef AFTER start() resolved. Under StrictMode's
-  // mount -> unmount -> remount cycle, a second start() could be queued
-  // and begin executing before the first start()'s promise had settled,
-  // because the guard checked a ref that hadn't been updated yet.
-  //
-  // Fix: scannerStatusRef is set SYNCHRONOUSLY the instant an operation
-  // begins, not after it completes. Valid states: 'idle' | 'starting' |
-  // 'running' | 'stopping'. Every start/stop call checks this status
-  // BEFORE doing anything async, so a second start can never be issued
-  // while one is already starting or running on the same instance.
   const scannerStatusRef = useRef("idle");
-
-  // Monotonically increasing generation counter. If a start() call
-  // resolves AFTER it has been superseded (screen changed, unmount,
-  // a newer start/stop), the stale resolution is recognized as obsolete
-  // and discarded rather than mutating state for a no-longer-relevant op.
   const scanGenerationRef = useRef(0);
 
-  const senderWalletId = sessionStorage.getItem("walletId");
-  const senderPhone = sessionStorage.getItem("phoneNumber");
-  const firstName = sessionStorage.getItem("firstName") || "";
-  const lastName = sessionStorage.getItem("lastName") || "";
+  const senderWalletId = localStorage.getItem("walletId") || sessionStorage.getItem("walletId");
+  const senderPhone = localStorage.getItem("phoneNumber") || sessionStorage.getItem("phoneNumber");
+  const firstName = localStorage.getItem("firstName") || sessionStorage.getItem("firstName") || "";
+  const lastName = localStorage.getItem("lastName") || sessionStorage.getItem("lastName") || "";
   const senderName = `${firstName} ${lastName}`.trim() || "User";
 
-  const getOfflineBalance = () =>
-    Number(sessionStorage.getItem("offlineBalance") || 0);
-
   const isSessionValid = Boolean(senderWalletId && senderPhone);
+
+  // Load balance from ledger on mount
+  useEffect(() => {
+    calculateOfflineBalance()
+      .then(setOfflineBalance)
+      .catch(() => setOfflineBalance(0));
+  }, []);
 
   useEffect(() => {
     if (!isSessionValid) {
@@ -58,16 +45,6 @@ function SendMoney() {
     }
   }, [isSessionValid, navigate]);
 
-  /**
-   * Fully tear down the Html5Qrcode instance and discard the ref.
-   *
-   * Fix: rather than reusing a single persisted instance across
-   * StrictMode's double-mount (which is what allowed two start() calls
-   * to target the same instance), each genuine stop destroys the
-   * instance entirely. The next start creates a brand new one. This
-   * guarantees there is never more than one start() ever called on any
-   * single Html5Qrcode object.
-   */
   const destroyScanner = useCallback(async () => {
     const instance = html5QrCodeRef.current;
     html5QrCodeRef.current = null;
@@ -75,9 +52,6 @@ function SendMoney() {
     if (!instance) return;
 
     try {
-      // getState() values: 1=NOT_STARTED, 2=SCANNING, 3=PAUSED
-      // Only call stop() if it's actually scanning; calling stop() on an
-      // instance that never started successfully throws its own error.
       if (typeof instance.getState === "function") {
         const state = instance.getState();
         if (state === 2 || state === 3) {
@@ -103,7 +77,7 @@ function SendMoney() {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
-      scanGenerationRef.current += 1; // invalidate any in-flight start
+      scanGenerationRef.current += 1;
       scannerStatusRef.current = "stopping";
       destroyScanner().then(() => {
         scannerStatusRef.current = "idle";
@@ -112,15 +86,15 @@ function SendMoney() {
   }, [destroyScanner]);
 
   const stopScanner = useCallback(async () => {
-    if (scannerStatusRef.current === "idle" || scannerStatusRef.current === "stopping") {
+    if (
+      scannerStatusRef.current === "idle" ||
+      scannerStatusRef.current === "stopping"
+    ) {
       return;
     }
-
-    scanGenerationRef.current += 1; // invalidate any in-flight start
+    scanGenerationRef.current += 1;
     scannerStatusRef.current = "stopping";
-
     await destroyScanner();
-
     scannerStatusRef.current = "idle";
   }, [destroyScanner]);
 
@@ -163,7 +137,6 @@ function SendMoney() {
           return;
         }
 
-        const offlineBalance = getOfflineBalance();
         if (payload.amount > offlineBalance) {
           setErrorModal({
             show: true,
@@ -193,27 +166,16 @@ function SendMoney() {
         });
       }
     },
-    [senderWalletId, stopScanner]
+    [senderWalletId, stopScanner, offlineBalance]
   );
 
   const onScanError = useCallback(() => {}, []);
 
-  /**
-   * Start the scanner.
-   *
-   * Fix: scannerStatusRef is checked and set to 'starting' SYNCHRONOUSLY,
-   * before any await. This closes the window that allowed a second call
-   * to slip through while the first start() was still pending — the
-   * guard no longer depends on a value that's only updated after an
-   * async operation resolves.
-   *
-   * scanGenerationRef lets a stale start() resolution (one superseded by
-   * an unmount or a newer start/stop call) recognize it's obsolete and
-   * bail out without mutating refs for an operation that's no longer
-   * relevant.
-   */
   const startScanner = useCallback(async () => {
-    if (scannerStatusRef.current === "starting" || scannerStatusRef.current === "running") {
+    if (
+      scannerStatusRef.current === "starting" ||
+      scannerStatusRef.current === "running"
+    ) {
       return;
     }
     if (scannerStatusRef.current === "stopping") {
@@ -228,8 +190,6 @@ function SendMoney() {
       return;
     }
 
-    // Always create a fresh instance — never reuse one that may have a
-    // start() already pending or completed on it from a prior cycle.
     const instance = new Html5Qrcode("qr-reader");
     html5QrCodeRef.current = instance;
 
@@ -378,9 +338,9 @@ function SendMoney() {
       const pinBuffer = encoder.encode(pin);
       const salt = Uint8Array.from(atob(storedSalt), (c) => c.charCodeAt(0));
 
-      const baseKey = await crypto.subtle.importKey("raw", pinBuffer, "PBKDF2", false, [
-        "deriveBits",
-      ]);
+      const baseKey = await crypto.subtle.importKey(
+        "raw", pinBuffer, "PBKDF2", false, ["deriveBits"]
+      );
 
       const derivedBits = await crypto.subtle.deriveBits(
         { name: "PBKDF2", salt, iterations: 600000, hash: "SHA-256" },
@@ -388,13 +348,10 @@ function SendMoney() {
         256
       );
 
-      const inputVerifier = btoa(
-        String.fromCharCode(...new Uint8Array(derivedBits))
-      );
+      const inputVerifier = btoa(String.fromCharCode(...new Uint8Array(derivedBits)));
 
       if (inputVerifier !== storedVerifier) {
-        const attempts =
-          parseInt(sessionStorage.getItem("pinAttempts") || "0") + 1;
+        const attempts = parseInt(sessionStorage.getItem("pinAttempts") || "0") + 1;
         sessionStorage.setItem("pinAttempts", attempts.toString());
 
         if (attempts >= 3) {
@@ -417,20 +374,12 @@ function SendMoney() {
       sessionStorage.removeItem("pinAttempts");
       setIsSubmitting(true);
 
-      const balanceBefore = getOfflineBalance();
-
       const transactionRef = `TXN-${Date.now()}-${Math.random()
         .toString(36)
         .substring(2, 8)
         .toUpperCase()}`;
 
       const createdAt = new Date().toISOString();
-
-      const newBalance = balanceBefore - scannedData.amount;
-      sessionStorage.setItem("offlineBalance", newBalance.toString());
-      window.dispatchEvent(
-        new CustomEvent("balance-updated", { detail: { balance: newBalance } })
-      );
 
       const senderTransaction = {
         type: "TRANSFER",
@@ -453,6 +402,13 @@ function SendMoney() {
       await saveTransaction(senderTransaction);
       await updateTransactionStatus(transactionRef, "SUCCESS");
 
+      // Recalculate balance from ledger — no manual arithmetic
+      const newBalance = await calculateOfflineBalance();
+      setOfflineBalance(newBalance);
+      window.dispatchEvent(
+        new CustomEvent("balance-updated", { detail: { balance: newBalance } })
+      );
+
       const qr2Payload = {
         type: "TRANSFER",
         transactionRef,
@@ -473,16 +429,20 @@ function SendMoney() {
       setTransactionPayload(qr2Payload);
       setScannedData((prev) => ({ ...prev, transactionRef, createdAt }));
       setScreen("confirmation");
+
     } catch (err) {
       console.error("[SendMoney] Payment error:", err);
 
-      const currentBalance = getOfflineBalance();
-      const balanceBefore =
-        scannedData ? currentBalance + scannedData.amount : currentBalance;
-      sessionStorage.setItem("offlineBalance", balanceBefore.toString());
-      window.dispatchEvent(
-        new CustomEvent("balance-updated", { detail: { balance: balanceBefore } })
-      );
+      // Recalculate from ledger on failure — no manual rollback needed
+      try {
+        const restoredBalance = await calculateOfflineBalance();
+        setOfflineBalance(restoredBalance);
+        window.dispatchEvent(
+          new CustomEvent("balance-updated", { detail: { balance: restoredBalance } })
+        );
+      } catch {
+        // leave balance as-is if ledger read fails
+      }
 
       setErrorModal({
         show: true,
@@ -502,8 +462,6 @@ function SendMoney() {
   }
 
   if (!isSessionValid) return null;
-
-  const offlineBalance = getOfflineBalance();
 
   return (
     <div className="sp-app">
@@ -567,9 +525,7 @@ function SendMoney() {
             )}
             <div className="review-row">
               <span className="review-label">Request reference</span>
-              <span className="review-value review-ref">
-                {scannedData.requestRef}
-              </span>
+              <span className="review-value review-ref">{scannedData.requestRef}</span>
             </div>
             <div className="review-divider" />
             <div className="review-row">
@@ -588,8 +544,7 @@ function SendMoney() {
           <div className="info-banner">
             ℹ️ You are about to send{" "}
             <strong>₦{Number(scannedData.amount).toLocaleString()}</strong> to{" "}
-            <strong>{scannedData.receiverName}</strong>. This cannot be reversed
-            offline.
+            <strong>{scannedData.receiverName}</strong>. This cannot be reversed offline.
           </div>
 
           <div className="btn-group">

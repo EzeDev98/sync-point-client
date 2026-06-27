@@ -1,12 +1,12 @@
 import { refreshToken } from "./api";
-import { clearTokenSession } from "./sessionUtils";
+import { clearTokenSession, readPersisted, persistValue } from "./sessionUtils";
 
-const REFRESH_BUFFER_MS = 60_000; 
+const REFRESH_BUFFER_MS = 60_000;
 
 let refreshPromise = null;
 
 function getTokenExpiry() {
-  const issuedAt = Number(sessionStorage.getItem("tokenIssuedAt") || 0);
+  const issuedAt = Number(readPersisted("tokenIssuedAt") || 0);
   const expiresIn = Number(sessionStorage.getItem("accessTokenExpiresIn") || 0);
   return issuedAt + expiresIn * 1000;
 }
@@ -15,14 +15,9 @@ function isAccessTokenExpiredOrClose() {
   return Date.now() >= getTokenExpiry() - REFRESH_BUFFER_MS;
 }
 
-/**
- * Returns a valid access token, refreshing proactively if close to expiry.
- * All API calls should use this instead of reading sessionStorage directly.
- * On refresh failure, clears the session and throws so the caller can redirect.
- */
 function isRefreshTokenExpired() {
-  const issuedAt = Number(sessionStorage.getItem("tokenIssuedAt") || 0);
-  const refreshExpiresIn = Number(sessionStorage.getItem("refreshTokenExpiresIn") || 0);
+  const issuedAt = Number(readPersisted("tokenIssuedAt") || 0);
+  const refreshExpiresIn = Number(readPersisted("refreshTokenExpiresIn") || 0);
   return Date.now() >= issuedAt + refreshExpiresIn * 1000;
 }
 
@@ -31,15 +26,17 @@ async function doRefresh() {
 
   refreshPromise = refreshToken()
     .then((data) => {
-      
       const accessToken = data.access_token;
       if (!accessToken) throw new Error("No access token in refresh response");
 
+      // Access token — sessionStorage only (gone on tab close)
       sessionStorage.setItem("sessionToken", accessToken);
-      sessionStorage.setItem("refreshToken", data.refresh_token);
       sessionStorage.setItem("accessTokenExpiresIn", data.expires_in);
-      sessionStorage.setItem("refreshTokenExpiresIn", data.refresh_expires_in);
-      sessionStorage.setItem("tokenIssuedAt", Date.now().toString());
+
+      // Refresh token — localStorage (survives app closure)
+      persistValue("refreshToken", data.refresh_token);
+      persistValue("refreshTokenExpiresIn", data.refresh_expires_in);
+      persistValue("tokenIssuedAt", Date.now().toString());
 
       return accessToken;
     })
@@ -49,7 +46,6 @@ async function doRefresh() {
 
   return refreshPromise;
 }
-
 
 export async function getValidToken() {
   if (isAccessTokenExpiredOrClose()) {
@@ -68,4 +64,16 @@ export async function getValidToken() {
     }
   }
   return sessionStorage.getItem("sessionToken");
+}
+
+
+/**
+ * Called at app startup when no access token exists but a refresh token does.
+ * Returns the new access token on success, throws on failure.
+ */
+export async function refreshOnStartup() {
+  if (isRefreshTokenExpired()) {
+    throw new Error("REFRESH_EXPIRED");
+  }
+  return doRefresh();
 }

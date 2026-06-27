@@ -2,33 +2,23 @@
 // CRYPTO SERVICE — SyncPoint
 // DEK-based AES-GCM encryption for IndexedDB
 //
-// Key hierarchy:
-//   Session Token ──PBKDF2──► KEK (Key Encryption Key)
-//   Random 256-bit DEK ──wrapped with KEK──► wrappedDEK (sessionStorage)
+// Key hierarchy (revised):
+//   User PIN ──PBKDF2──► KEK (Key Encryption Key)
+//   Random 256-bit DEK ──wrapped with KEK──► wrappedDEK (localStorage)
 //   DEK ──AES-GCM──► every IndexedDB record
 //
+// The PIN is the stable secret — unlike access tokens, it never rotates.
 // The raw DEK lives ONLY in this module's memory (_dek).
-// It is never written to IndexedDB or localStorage.
-// sessionStorage holds only the KEK-wrapped form of the DEK.
 // ============================================
 
-// Module-scoped DEK — cleared on logout or page unload
 let _dek = null;
 
-// ─────────────────────────────────────────────
-// INTERNAL HELPERS
-// ─────────────────────────────────────────────
-
-/**
- * Derive a KEK from the session token using PBKDF2.
- * The salt is fixed and app-specific — security comes from the session token.
- */
-async function deriveKEK(sessionToken) {
+async function deriveKEK(pin) {
   const encoder = new TextEncoder();
 
   const keyMaterial = await crypto.subtle.importKey(
     "raw",
-    encoder.encode(sessionToken),
+    encoder.encode(pin),
     "PBKDF2",
     false,
     ["deriveKey"]
@@ -48,28 +38,19 @@ async function deriveKEK(sessionToken) {
   );
 }
 
-// ─────────────────────────────────────────────
-// PUBLIC API — LIFECYCLE
-// ─────────────────────────────────────────────
-
 /**
- * Initialize encryption for a new login session.
+ * Initialize encryption on first login or after PIN is set.
+ * Call with the user's PIN immediately after login succeeds.
  *
- * Call immediately after the server returns a session token on login.
- * Generates a fresh random DEK, wraps it with a KEK derived from the
- * session token, and stores the wrapped form in sessionStorage.
- *
- * @param {string} sessionToken — server-issued session token
+ * @param {string} pin — the user's 4-digit transaction PIN
  */
-export async function initializeEncryption(sessionToken) {
-  if (!sessionToken) {
-    throw new Error("initializeEncryption: sessionToken is required.");
+export async function initializeEncryption(pin) {
+  if (!pin) {
+    throw new Error("initializeEncryption: PIN is required.");
   }
 
-  // 1. Generate fresh random 256-bit DEK
   const rawDEK = crypto.getRandomValues(new Uint8Array(32));
 
-  // 2. Import raw bytes as extractable CryptoKey (must be extractable to wrap)
   const dekKey = await crypto.subtle.importKey(
     "raw",
     rawDEK,
@@ -78,26 +59,23 @@ export async function initializeEncryption(sessionToken) {
     ["encrypt", "decrypt"]
   );
 
-  // 3. Derive KEK from session token
-  const kek = await deriveKEK(sessionToken);
+  const kek = await deriveKEK(pin);
 
-  // 4. Wrap DEK with KEK using AES-KW
   const wrappedDEK = await crypto.subtle.wrapKey("raw", dekKey, kek, {
     name: "AES-KW",
   });
 
-  // 5. Persist wrapped DEK to sessionStorage (safe — it's encrypted)
-  sessionStorage.setItem(
+  // Persist to localStorage — survives app closure
+  localStorage.setItem(
     "wrappedDEK",
     btoa(String.fromCharCode(...new Uint8Array(wrappedDEK)))
   );
 
-  // 6. Hold the unwrapped DEK in memory only — non-extractable from here
   _dek = await crypto.subtle.importKey(
     "raw",
     rawDEK,
     { name: "AES-GCM", length: 256 },
-    false, // not extractable after use
+    false,
     ["encrypt", "decrypt"]
   );
 
@@ -105,19 +83,18 @@ export async function initializeEncryption(sessionToken) {
 }
 
 /**
- * Restore the DEK after a page reload within the same session.
+ * Restore the DEK after app closure or page reload.
+ * Call during PIN verification with the PIN the user just entered.
  *
- * Call on app boot if wrappedDEK exists in sessionStorage.
- * Requires the same session token used during initializeEncryption.
- *
- * @param {string} sessionToken
+ * @param {string} pin — the PIN the user entered on the PIN screen
  */
-export async function restoreEncryption(sessionToken) {
-  const wrappedDEKBase64 = sessionStorage.getItem("wrappedDEK");
+export async function restoreEncryption(pin) {
+  const wrappedDEKBase64 =
+    localStorage.getItem("wrappedDEK") ?? sessionStorage.getItem("wrappedDEK");
 
   if (!wrappedDEKBase64) {
     throw new Error(
-      "restoreEncryption: No wrapped DEK in session — user must log in again."
+      "restoreEncryption: No wrapped DEK found — user must log in again."
     );
   }
 
@@ -125,7 +102,7 @@ export async function restoreEncryption(sessionToken) {
     c.charCodeAt(0)
   );
 
-  const kek = await deriveKEK(sessionToken);
+  const kek = await deriveKEK(pin);
 
   _dek = await crypto.subtle.unwrapKey(
     "raw",
@@ -133,43 +110,24 @@ export async function restoreEncryption(sessionToken) {
     kek,
     { name: "AES-KW" },
     { name: "AES-GCM", length: 256 },
-    false, // not extractable after restore
+    false,
     ["encrypt", "decrypt"]
   );
 
-  console.log("[CryptoService] Encryption restored from session.");
+  console.log("[CryptoService] Encryption restored from PIN.");
 }
 
-/**
- * Returns true if the DEK is loaded in memory and ready for use.
- */
 export function isEncryptionReady() {
   return _dek !== null;
 }
 
-/**
- * Clear the DEK from memory and remove the wrapped DEK from sessionStorage.
- * Call on logout.
- */
 export function clearEncryptionKey() {
   _dek = null;
+  localStorage.removeItem("wrappedDEK");
   sessionStorage.removeItem("wrappedDEK");
   console.log("[CryptoService] Encryption key cleared.");
 }
 
-// ─────────────────────────────────────────────
-// PUBLIC API — ENCRYPT / DECRYPT
-// ─────────────────────────────────────────────
-
-/**
- * Encrypt a plain JavaScript object using AES-GCM with the session DEK.
- *
- * A fresh 96-bit IV is generated per record — IVs must never be reused
- * with the same key under AES-GCM.
- *
- * @param {object} payload — the object to encrypt
- * @returns {{ iv: string, data: string }} — base64-encoded IV and ciphertext
- */
 export async function encryptData(payload) {
   if (!_dek) {
     throw new Error(
@@ -177,7 +135,7 @@ export async function encryptData(payload) {
     );
   }
 
-  const iv = crypto.getRandomValues(new Uint8Array(12)); // 96-bit IV for AES-GCM
+  const iv = crypto.getRandomValues(new Uint8Array(12));
   const encoded = new TextEncoder().encode(JSON.stringify(payload));
 
   const ciphertext = await crypto.subtle.encrypt(
@@ -192,13 +150,6 @@ export async function encryptData(payload) {
   };
 }
 
-/**
- * Decrypt an IndexedDB record using the session DEK.
- *
- * @param {string} encryptedData — base64-encoded ciphertext
- * @param {string} iv — base64-encoded IV used during encryption
- * @returns {object} — decrypted payload
- */
 export async function decryptData(encryptedData, iv) {
   if (!_dek) {
     throw new Error(

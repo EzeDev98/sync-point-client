@@ -1,43 +1,55 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { fundOfflineWallet, transferToOnline } from "../services/api";
+import { saveLedgerTransaction } from "../services/indexedDbService";
+import { calculateOfflineBalance } from "../services/walletLedger";
 import "../styles/auth.css";
 
 function FundWallet() {
   const navigate = useNavigate();
+  const location = useLocation();
 
-  const [activeTab, setActiveTab] = useState("offline");
-  const [formData, setFormData] = useState({
-    amount: "",
-    description: "",
-    transactionPin: "",
+  const logoutBlockedMessage = sessionStorage.getItem("logoutBlockedMessage") || "";
+
+  const [activeTab, setActiveTab] = useState(() => {
+    if (location.state?.fromLogout || location.state?.autoTab === "online") {
+      sessionStorage.removeItem("logoutBlockedMessage");
+      return "online";
+    }
+    return "offline";
   });
+
+  const [currentBalance, setCurrentBalance] = useState(0);
+  const [balanceLoaded, setBalanceLoaded] = useState(false);
+
+  // Load ledger balance on mount
+  useState(() => {
+    calculateOfflineBalance()
+      .then((bal) => {
+        setCurrentBalance(bal);
+        setBalanceLoaded(true);
+      })
+      .catch(() => setBalanceLoaded(true));
+  });
+
+  const [formData, setFormData] = useState({ amount: "", description: "", transactionPin: "" });
   const [showPin, setShowPin] = useState(false);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successModal, setSuccessModal] = useState({ show: false, message: "" });
   const [errorModal, setErrorModal] = useState({ show: false, message: "" });
-
   const [requestRef, setRequestRef] = useState(null);
 
   function generateRequestRef() {
-    return (crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    return crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   }
-
-  // Get current offline balance from sessionStorage
-  const getCurrentOfflineBalance = () => {
-    return Number(sessionStorage.getItem("offlineBalance") || 0);
-  };
 
   function handleChange(e) {
     const { name, value } = e.target;
-
-    // PIN: only digits, max 4
     if (name === "transactionPin") {
       if (!/^\d*$/.test(value) || value.length > 4) return;
     }
-
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
   }
@@ -51,16 +63,15 @@ function FundWallet() {
 
   function validate() {
     const newErrors = {};
-    const currentBalance = getCurrentOfflineBalance();
+    const amount = Number(formData.amount);
 
-    if (!formData.amount || isNaN(formData.amount) || Number(formData.amount) <= 0) {
+    if (!formData.amount || isNaN(amount) || amount <= 0) {
       newErrors.amount = "Enter a valid amount";
-    } else if (Number(formData.amount) < 100) {
+    } else if (amount < 100) {
       newErrors.amount = "Minimum transfer amount is ₦100";
     }
 
-       // For online tab, check if amount exceeds offline balance
-    if (activeTab === "online" && Number(formData.amount) > currentBalance) {
+    if (activeTab === "online" && amount > currentBalance) {
       newErrors.amount = `Insufficient offline balance. You have ₦${currentBalance.toLocaleString()}`;
     }
 
@@ -72,27 +83,16 @@ function FundWallet() {
   }
 
   function getFullName() {
-    const firstName = sessionStorage.getItem("firstName") || "";
-    const middleName = sessionStorage.getItem("middleName") || "";
-    const lastName = sessionStorage.getItem("lastName") || "";
-
-    return [firstName, middleName, lastName]
-      .filter(Boolean)
-      .join(" ")
-      .trim();
+    const firstName = localStorage.getItem("firstName") || sessionStorage.getItem("firstName") || "";
+    const middleName = localStorage.getItem("middleName") || sessionStorage.getItem("middleName") || "";
+    const lastName = localStorage.getItem("lastName") || sessionStorage.getItem("lastName") || "";
+    return [firstName, middleName, lastName].filter(Boolean).join(" ").trim();
   }
 
   function saveNotification(notification) {
-    const existing =
-      JSON.parse(sessionStorage.getItem("notifications") || "[]");
-
+    const existing = JSON.parse(sessionStorage.getItem("notifications") || "[]");
     existing.unshift(notification);
-
-    // keep only latest 50
-    sessionStorage.setItem(
-      "notifications",
-      JSON.stringify(existing.slice(0, 50))
-    );
+    sessionStorage.setItem("notifications", JSON.stringify(existing.slice(0, 50)));
   }
 
   async function handleSubmit(e) {
@@ -107,35 +107,59 @@ function FundWallet() {
     setIsSubmitting(true);
 
     const newRef = requestRef ?? generateRequestRef();
-
-    if (!requestRef) {
-      setRequestRef(newRef);
-    }
+    if (!requestRef) setRequestRef(newRef);
 
     try {
       const amount = Number(formData.amount);
       const payload = {
-        amount: amount,
+        amount,
         description: formData.description || null,
         transactionPin: formData.transactionPin,
         requestRef: newRef,
       };
 
-      if (activeTab === "offline") {
-        await fundOfflineWallet(payload);
-       
-        const currentBalance = getCurrentOfflineBalance();
-        const newBalance = currentBalance + amount;
-        sessionStorage.setItem("offlineBalance", newBalance.toString());
+      const walletId = localStorage.getItem("walletId") || sessionStorage.getItem("walletId");
+      const phoneNumber = localStorage.getItem("phoneNumber") || sessionStorage.getItem("phoneNumber");
+      const fullName = getFullName();
 
-        const senderName = getFullName();
+      if (activeTab === "offline") {
+        // 1. Hit the backend — confirms the debit from the online account
+        await fundOfflineWallet(payload);
+
+        // 2. Save CREDIT ledger entry into IndexedDB
+        await saveLedgerTransaction({
+          transactionRef: newRef,
+          requestRef: newRef,
+          type: "FUND",
+          entryType: "CREDIT",
+          status: "SUCCESS",
+          amount,
+          currency: "NGN",
+          description: payload.description || "Offline wallet funding",
+          senderWalletId: walletId,
+          senderPhone: phoneNumber,
+          senderName: fullName,
+          receiverWalletId: walletId,
+          receiverPhone: phoneNumber,
+          receiverName: fullName,
+          createdAt: new Date().toISOString(),
+        });
+
+        // 3. Recalculate balance from ledger
+        const newBalance = await calculateOfflineBalance();
+        setCurrentBalance(newBalance);
+
+        // Notify dashboard
+        window.dispatchEvent(
+          new CustomEvent("balance-updated", { detail: { balance: newBalance } })
+        );
 
         saveNotification({
           id: crypto.randomUUID(),
           type: "fund",
           read: false,
           title: "Offline Wallet Funded",
-          desc: `${senderName} funded offline wallet with ₦${amount.toLocaleString()}`,
+          desc: `${fullName} funded offline wallet with ₦${amount.toLocaleString()}`,
           amount,
           time: new Date().toISOString(),
         });
@@ -144,28 +168,56 @@ function FundWallet() {
           show: true,
           message: `₦${amount.toLocaleString()} has been added to your offline wallet successfully. New balance: ₦${newBalance.toLocaleString()}`,
         });
-      } else {
-        await transferToOnline(payload);
-        
-        const currentBalance = getCurrentOfflineBalance();
-        const newBalance = currentBalance - amount;
-        sessionStorage.setItem("offlineBalance", newBalance.toString());
 
-        const senderName = getFullName();
+      } else {
+        // 1. Hit the backend — moves money from offline wallet to online
+        await transferToOnline(payload);
+
+        // 2. Save DEBIT ledger entry into IndexedDB
+        await saveLedgerTransaction({
+          transactionRef: newRef,
+          requestRef: newRef,
+          type: "TRANSFER_TO_ONLINE",
+          entryType: "DEBIT",
+          status: "SUCCESS",
+          amount,
+          currency: "NGN",
+          description: payload.description || "Transfer to online account",
+          senderWalletId: walletId,
+          senderPhone: phoneNumber,
+          senderName: fullName,
+          receiverWalletId: walletId,
+          receiverPhone: phoneNumber,
+          receiverName: fullName,
+          createdAt: new Date().toISOString(),
+        });
+
+        // 3. Recalculate balance from ledger
+        const newBalance = await calculateOfflineBalance();
+        setCurrentBalance(newBalance);
+
+        window.dispatchEvent(
+          new CustomEvent("balance-updated", { detail: { balance: newBalance } })
+        );
 
         saveNotification({
           id: crypto.randomUUID(),
           type: "transfer",
           read: false,
           title: "Transfer To Online Account",
-          desc: `${senderName} transferred ₦${amount.toLocaleString()} to online account`,
+          desc: `${fullName} transferred ₦${amount.toLocaleString()} to online account`,
           amount,
           time: new Date().toISOString(),
         });
-        
+
         setSuccessModal({
           show: true,
-          message: `₦${amount.toLocaleString()} has been transferred to your online account successfully. Remaining offline balance: ₦${newBalance.toLocaleString()}`,
+          message:
+            newBalance === 0
+              ? `₦${amount.toLocaleString()} transferred. Your offline wallet is now empty. ` +
+                `Tap "Back to Dashboard" to complete logout.`
+              : `₦${amount.toLocaleString()} transferred to your online account. ` +
+                `Remaining offline balance: ₦${newBalance.toLocaleString()}`,
         });
       }
 
@@ -184,11 +236,9 @@ function FundWallet() {
   }
 
   const isOffline = activeTab === "offline";
-  const currentOfflineBalance = getCurrentOfflineBalance();
 
   return (
     <div className="sp-app">
-      {/* HEADER */}
       <div className="page-header">
         <button className="back-btn" onClick={() => navigate("/dashboard")}>
           <ArrowLeft size={16} strokeWidth={1.8} />
@@ -199,12 +249,20 @@ function FundWallet() {
       </div>
 
       <div className="page-body">
-        {/* Current Offline Balance Display */}
+        {logoutBlockedMessage && (
+          <div
+            className="info-banner"
+            style={{ background: "#FEF3C7", borderColor: "#F59E0B", color: "#92400E" }}
+          >
+            ⚠️ {logoutBlockedMessage}
+          </div>
+        )}
+
         <div className="info-banner" style={{ background: "#F0FDF9", borderColor: "#9FE1CB" }}>
-          <strong>Current Offline Balance:</strong> ₦{currentOfflineBalance.toLocaleString()}
+          <strong>Current Offline Balance:</strong>{" "}
+          {balanceLoaded ? `₦${currentBalance.toLocaleString()}` : "Loading..."}
         </div>
 
-        {/* TAB SELECTOR */}
         <div className="fund-selector">
           <button
             className={`fund-tab ${activeTab === "offline" ? "active" : ""}`}
@@ -222,7 +280,6 @@ function FundWallet() {
           </button>
         </div>
 
-        {/* INFO BANNER */}
         <div className="info-banner">
           {isOffline ? (
             <>
@@ -235,14 +292,12 @@ function FundWallet() {
               🏦 Funds will be moved from your <strong>offline wallet</strong> back into
               your <strong>online account</strong>. This requires an internet connection.
               <br />
-              <strong>Available to transfer: ₦{currentOfflineBalance.toLocaleString()}</strong>
+              <strong>Available to transfer: ₦{currentBalance.toLocaleString()}</strong>
             </>
           )}
         </div>
 
-        {/* FORM */}
         <form className="form-section" onSubmit={handleSubmit} noValidate>
-          {/* AMOUNT */}
           <div className="form-field">
             <label htmlFor="amount">Amount</label>
             <div className="amount-wrapper">
@@ -256,21 +311,20 @@ function FundWallet() {
                 value={formData.amount}
                 onChange={handleChange}
                 min="0"
-                max={!isOffline ? currentOfflineBalance : undefined}
+                max={!isOffline ? currentBalance : undefined}
               />
             </div>
             {errors.amount ? (
               <p className="field-error">{errors.amount}</p>
             ) : (
               <p className="field-hint">
-                {isOffline 
-                  ? "Minimum transfer: ₦100" 
-                  : `Maximum transfer: ₦${currentOfflineBalance.toLocaleString()}`}
+                {isOffline
+                  ? "Minimum transfer: ₦100"
+                  : `Maximum transfer: ₦${currentBalance.toLocaleString()}`}
               </p>
             )}
           </div>
 
-          {/* DESCRIPTION */}
           <div className="form-field">
             <label htmlFor="description">
               Description{" "}
@@ -286,7 +340,6 @@ function FundWallet() {
             />
           </div>
 
-          {/* PIN */}
           <div className="form-field">
             <label htmlFor="transactionPin">Transaction PIN</label>
             <div className="input-wrapper">
@@ -316,7 +369,7 @@ function FundWallet() {
             )}
           </div>
 
-          <button type="submit" className="btn-primary" disabled={isSubmitting}>
+          <button type="submit" className="btn-primary" disabled={isSubmitting || !balanceLoaded}>
             {isSubmitting
               ? "Processing..."
               : isOffline
@@ -326,7 +379,6 @@ function FundWallet() {
         </form>
       </div>
 
-      {/* SUCCESS MODAL */}
       {successModal.show && (
         <div className="modal-overlay">
           <div className="modal-card">
@@ -346,7 +398,6 @@ function FundWallet() {
         </div>
       )}
 
-      {/* ERROR MODAL */}
       {errorModal.show && (
         <div className="modal-overlay">
           <div className="modal-card">
