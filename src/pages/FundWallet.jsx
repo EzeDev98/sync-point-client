@@ -90,9 +90,9 @@ function FundWallet() {
   }
 
   function saveNotification(notification) {
-    const existing = JSON.parse(sessionStorage.getItem("notifications") || "[]");
+    const existing = JSON.parse(localStorage.getItem("notifications") || "[]");
     existing.unshift(notification);
-    sessionStorage.setItem("notifications", JSON.stringify(existing.slice(0, 50)));
+    localStorage.setItem("notifications", JSON.stringify(existing.slice(0, 50)));
   }
 
   async function handleSubmit(e) {

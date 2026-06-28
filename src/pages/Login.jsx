@@ -29,6 +29,7 @@ function Login() {
       }
 
       try {
+
         // Refresh token exists — get a new access token silently
         await refreshOnStartup();
         // Success — go straight to PIN verification

@@ -6,6 +6,7 @@ import { getAllTransactions } from "../services/indexedDbService";
 import { requestLogout } from "../services/logoutManager";
 import { isEncryptionReady } from "../services/cryptoService";
 import { calculateOfflineBalance } from "../services/walletLedger";
+import AppLogo from "../components/AppLogo";
 import "../styles/dashboard.css";
 
 function getIcon(entryType) {
@@ -37,7 +38,7 @@ function Dashboard() {
 
   const [notifications, setNotifications] = useState(() => {
     try {
-      return JSON.parse(sessionStorage.getItem("notifications") || "[]");
+      return JSON.parse(localStorage.getItem("notifications") || "[]");
     } catch {
       return [];
     }
@@ -177,7 +178,7 @@ function Dashboard() {
   function markAsRead(id) {
     setNotifications((prev) => {
       const updated = prev.map((n) => (n.id === id ? { ...n, read: true } : n));
-      sessionStorage.setItem("notifications", JSON.stringify(updated));
+      localStorage.setItem("notifications", JSON.stringify(updated));
       return updated;
     });
   }
@@ -185,7 +186,7 @@ function Dashboard() {
   function markAllRead() {
     setNotifications((prev) => {
       const updated = prev.map((n) => ({ ...n, read: true }));
-      sessionStorage.setItem("notifications", JSON.stringify(updated));
+      localStorage.setItem("notifications", JSON.stringify(updated));
       return updated;
     });
   }
@@ -283,25 +284,10 @@ function Dashboard() {
       {/* HEADER */}
       <header className="sp-header">
         <div className="sp-logo">
-          <div className="sp-logo-icon">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path
-                d="M7 1C4.5 1 2.5 2.8 2 5"
-                stroke="white"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-              />
-              <path
-                d="M12 9C11.5 11.2 9.5 13 7 13C4.5 13 2.5 11.2 2 9"
-                stroke="white"
-                strokeWidth="1.5"
-                strokeLinecap="round"
-                strokeDasharray="2 2"
-              />
-              <circle cx="7" cy="7" r="1.5" fill="white" stroke="white" strokeWidth="1" />
-            </svg>
+          <div className="sp-logo">
+            <AppLogo size={28} />
+            <span className="sp-logo-text">SyncPoint</span>
           </div>
-          <span className="sp-logo-text">SyncPoint</span>
         </div>
 
         {/* NOTIFICATION BELL */}

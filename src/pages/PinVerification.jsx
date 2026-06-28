@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { verifyWalletPin } from "../services/api";
-import { clearAuthSession, readPersisted } from "../services/sessionUtils";
+import { readPersisted } from "../services/sessionUtils";
 import { restoreEncryption, initializeEncryption } from "../services/cryptoService";
 import { startAutoSync } from "../services/syncService";
 import "../styles/auth.css";
@@ -119,11 +119,6 @@ function PinVerification() {
     }
   }
 
-  function handleBackToLogin() {
-    clearAuthSession();
-    navigate("/login", { replace: true });
-  }
-
   return (
     <div className="auth-page">
       <div className="auth-card">
@@ -169,17 +164,6 @@ function PinVerification() {
             {isSubmitting ? "Unlocking..." : "Unlock Wallet"}
           </button>
         </form>
-
-        <div className="auth-links">
-          <button
-            type="button"
-            onClick={handleBackToLogin}
-            className="auth-link"
-            style={{ background: "none", border: "none", cursor: "pointer" }}
-          >
-            ← Sign in with a different account
-          </button>
-        </div>
       </div>
 
       {errorModal.show && (
