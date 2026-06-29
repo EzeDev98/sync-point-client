@@ -172,30 +172,35 @@ function SendMoney() {
   const onScanError = useCallback(() => {}, []);
 
   const startScanner = useCallback(async () => {
-    if (
-      scannerStatusRef.current === "starting" ||
-      scannerStatusRef.current === "running"
-    ) {
-      return;
-    }
-    if (scannerStatusRef.current === "stopping") {
-      return;
-    }
+    if (scannerStatusRef.current === "starting" || scannerStatusRef.current === "running") return;
+    if (scannerStatusRef.current === "stopping") return;
 
     scannerStatusRef.current = "starting";
     const myGeneration = ++scanGenerationRef.current;
 
-    if (!isMountedRef.current) {
-      scannerStatusRef.current = "idle";
-      return;
-    }
-
-    const instance = new Html5Qrcode("qr-reader");
-    html5QrCodeRef.current = instance;
+    if (!isMountedRef.current) { scannerStatusRef.current = "idle"; return; }
 
     try {
+      // Get available cameras first
+      const cameras = await Html5Qrcode.getCameras();
+      if (!cameras || cameras.length === 0) {
+        throw new Error("No camera found on this device.");
+      }
+
+      if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) {
+        scannerStatusRef.current = "idle";
+        return;
+      }
+
+      // Prefer rear camera on mobile, fall back to first available
+      const camera =
+        cameras.find(c => /back|rear|environment/i.test(c.label)) || cameras[0];
+
+      const instance = new Html5Qrcode("qr-reader");
+      html5QrCodeRef.current = instance;
+
       await instance.start(
-        { facingMode: { ideal: "environment" } },
+        camera.id,  // ← use device ID instead of facingMode
         { fps: 10, qrbox: { width: 250, height: 250 } },
         onScanSuccess,
         onScanError
@@ -206,34 +211,20 @@ function SendMoney() {
       if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) {
         await instance.stop().catch(() => {});
         instance.clear?.();
-        return;
-      }
-
-      scannerStatusRef.current = "running";
-    } catch (err) {
-
-      console.error("[SendMoney] RAW start error:", err?.name, err?.message);
-
-      if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) {
-        return;
-      }
-
-      const errName = err?.name || "";
-      const message = typeof err?.message === "string" ? err.message : "";
-      const isKnownNonFatalRace =
-        message.includes("already under transition") ||
-        message.includes("Cannot clear while scan is ongoing") ||
-        message.includes("scanner is already running");
-
-      if (isKnownNonFatalRace) {
-        console.warn("[SendMoney] Scanner start raced an internal transition:", message);
         scannerStatusRef.current = "idle";
         return;
       }
 
-      console.error("[SendMoney] Failed to start scanner:", err);
+      scannerStatusRef.current = "running";
+
+    } catch (err) {
+      console.error("[SendMoney] RAW start error:", err?.name, err?.message);
+
+      if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) return;
+
       scannerStatusRef.current = "idle";
 
+      const errName = err?.name || "";
       const isPermissionError =
         errName === "NotAllowedError" ||
         errName === "PermissionDeniedError" ||
@@ -244,7 +235,7 @@ function SendMoney() {
         show: true,
         message: isPermissionError
           ? "Unable to access camera. Please check camera permissions."
-          : "Camera failed to start. Please try again.",
+          : err.message || "Camera failed to start. Please try again.",
       });
     }
   }, [onScanSuccess, onScanError]);
