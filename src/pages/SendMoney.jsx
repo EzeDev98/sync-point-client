@@ -195,11 +195,13 @@ function SendMoney() {
 
     try {
       await instance.start(
-        { facingMode: "environment" },
+        { facingMode: { ideal: "environment" } },
         { fps: 10, qrbox: { width: 250, height: 250 } },
         onScanSuccess,
         onScanError
       );
+
+      await new Promise(r => setTimeout(r, 0));
 
       if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) {
         await instance.stop().catch(() => {});
@@ -209,6 +211,9 @@ function SendMoney() {
 
       scannerStatusRef.current = "running";
     } catch (err) {
+
+      console.error("[SendMoney] RAW start error:", err?.name, err?.message);
+
       if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) {
         return;
       }
