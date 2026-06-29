@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { setWalletPin } from "../services/api";
 import { useNetwork } from "../hooks/useNetwork";
-import { saveOfflinePinVerifier } from "../services/savePinVerifier";
+import { saveOfflinePinVerifier } from "../services/savePinVerifier.js";
+import { initializeEncryption } from "../services/cryptoService";
 import "../styles/auth.css";
 
 function SetPin() {
@@ -53,13 +54,10 @@ function SetPin() {
     setIsSubmitting(true);
 
     try {
-      
         await setWalletPin(formData.pin, formData.confirmNewPin);
-
         await saveOfflinePinVerifier(formData.pin);
-
+        await initializeEncryption(formData.pin);
         navigate("/dashboard");
-
     } catch (err) {
       setErrors({ general: err.message || "Failed to set PIN. Please try again." });
     } finally {

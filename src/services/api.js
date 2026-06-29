@@ -1,9 +1,10 @@
 import { getValidToken } from "./token";
 // const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:2000/api/v1";
 const BASE_URL = "http://localhost:2000/api/v1";
+import { readPersisted } from "./sessionUtils"; 
 
 function getPhoneNumber() {
-  return sessionStorage.getItem("phoneNumber") || null;
+  return readPersisted("phoneNumber");
 }
 
 // ============================================
