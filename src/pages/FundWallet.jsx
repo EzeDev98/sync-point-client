@@ -1,9 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { fundOfflineWallet, transferToOnline } from "../services/api";
 import { saveLedgerTransaction } from "../services/indexedDbService";
 import { calculateOfflineBalance } from "../services/walletLedger";
+import { useNetwork } from "../hooks/useNetwork";
+import NoInternetModal from "../components/NoInternetModal";
 import "../styles/auth.css";
 
 function FundWallet() {
@@ -23,15 +25,17 @@ function FundWallet() {
   const [currentBalance, setCurrentBalance] = useState(0);
   const [balanceLoaded, setBalanceLoaded] = useState(false);
 
-  // Load ledger balance on mount
-  useState(() => {
+  const { isOffline } = useNetwork();
+  const [noInternetModal, setNoInternetModal] = useState(false);
+
+  useEffect(() => {
     calculateOfflineBalance()
       .then((bal) => {
         setCurrentBalance(bal);
         setBalanceLoaded(true);
       })
       .catch(() => setBalanceLoaded(true));
-  });
+  }, []);
 
   const [formData, setFormData] = useState({ amount: "", description: "", transactionPin: "" });
   const [showPin, setShowPin] = useState(false);
@@ -97,6 +101,13 @@ function FundWallet() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+
+    // Both tabs require internet
+    if (isOffline) {
+      setNoInternetModal(true);
+      setIsSubmitting(false);
+      return;
+    }
 
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
@@ -235,7 +246,7 @@ function FundWallet() {
     }
   }
 
-  const isOffline = activeTab === "offline";
+  const isOfflineTab = activeTab === "offline";
 
   return (
     <div className="sp-app">
@@ -244,7 +255,7 @@ function FundWallet() {
           <ArrowLeft size={16} strokeWidth={1.8} />
         </button>
         <span className="page-title">
-          {isOffline ? "Fund Offline Wallet" : "Transfer to Online Account"}
+          {isOfflineTab ? "Fund Offline Wallet" : "Transfer to Online Account"}
         </span>
       </div>
 
@@ -281,7 +292,7 @@ function FundWallet() {
         </div>
 
         <div className="info-banner">
-          {isOffline ? (
+          {isOfflineTab ? (
             <>
               💳 Funds will be transferred from your <strong>online account</strong> into
               your <strong>offline wallet</strong>. You can use this balance for offline
@@ -311,14 +322,14 @@ function FundWallet() {
                 value={formData.amount}
                 onChange={handleChange}
                 min="0"
-                max={!isOffline ? currentBalance : undefined}
+                max={!isOfflineTab ? currentBalance : undefined}
               />
             </div>
             {errors.amount ? (
               <p className="field-error">{errors.amount}</p>
             ) : (
               <p className="field-hint">
-                {isOffline
+                {isOfflineTab
                   ? "Minimum transfer: ₦100"
                   : `Maximum transfer: ₦${currentBalance.toLocaleString()}`}
               </p>
@@ -334,7 +345,7 @@ function FundWallet() {
               type="text"
               id="description"
               name="description"
-              placeholder={isOffline ? "e.g. Weekly wallet top-up" : "e.g. Moving funds back online"}
+              placeholder={isOfflineTab ? "e.g. Weekly wallet top-up" : "e.g. Moving funds back online"}
               value={formData.description}
               onChange={handleChange}
             />
@@ -372,7 +383,7 @@ function FundWallet() {
           <button type="submit" className="btn-primary" disabled={isSubmitting || !balanceLoaded}>
             {isSubmitting
               ? "Processing..."
-              : isOffline
+              : isOfflineTab
               ? "Fund Offline Wallet"
               : "Transfer to Online"}
           </button>
@@ -413,6 +424,11 @@ function FundWallet() {
           </div>
         </div>
       )}
+
+      <NoInternetModal
+        show={noInternetModal}
+        onClose={() => setNoInternetModal(false)}
+      />
     </div>
   );
 }

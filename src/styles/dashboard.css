@@ -260,6 +260,10 @@
   transition: background 0.15s, border-color 0.15s;
 }
 
+.action-icon.offline-action {
+  opacity: 0.45;
+}
+
 .action-btn:hover .action-icon {
   background: #E1F5EE;
   border-color: #9FE1CB;

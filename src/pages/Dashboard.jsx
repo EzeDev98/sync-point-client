@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Bell, Eye, EyeOff, ArrowUpRight, ArrowDownLeft, Plus, RefreshCw, LogOut } from "lucide-react";
-import { syncPendingTransactions, startAutoSync, isOnline, getSyncBadgeCount } from "../services/syncService";
+import { syncPendingTransactions, startAutoSync, getSyncBadgeCount } from "../services/syncService";
 import { getAllTransactions } from "../services/indexedDbService";
 import { requestLogout } from "../services/logoutManager";
 import { isEncryptionReady } from "../services/cryptoService";
 import { calculateOfflineBalance } from "../services/walletLedger";
+import { useNetwork } from "../hooks/useNetwork";
+import NoInternetModal from "../components/NoInternetModal";
 import AppLogo from "../components/AppLogo";
 import "../styles/dashboard.css";
 
@@ -50,6 +52,9 @@ function Dashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const notifRef = useRef(null);
+
+  const { isOffline } = useNetwork();
+  const [noInternetModal, setNoInternetModal] = useState(false);
 
   const firstName =
     sessionStorage.getItem("firstName") ??
@@ -192,12 +197,9 @@ function Dashboard() {
   }
 
   async function handleSync() {
-    if (!isOnline()) {
-      setSyncResult({
-        message: "You are offline. Please connect to the internet to sync.",
-        failed: 1,
-        synced: 0,
-      });
+
+    if (isOffline) {
+      setNoInternetModal(true);
       return;
     }
 
@@ -237,6 +239,12 @@ function Dashboard() {
   }
 
   async function handleLogout() {
+
+    if (isOffline) {
+      setNoInternetModal(true);
+      return;
+    }
+
     setIsLoggingOut(true);
     setLogoutError("");
     setLogoutStep("checking");
@@ -437,8 +445,18 @@ function Dashboard() {
             <span className="action-label">Receive</span>
           </button>
 
-          <button className="action-btn" onClick={() => navigate("/fund")}>
-            <div className="action-icon">
+          <button
+            className="action-btn"
+            onClick={() => {
+              if (isOffline) {
+                setNoInternetModal(true);
+                return;
+              }
+
+              navigate("/fund");
+            }}
+          >
+            <div className={`action-icon ${isOffline ? "offline-action" : ""}`}>
               <Plus size={18} strokeWidth={1.8} />
             </div>
             <span className="action-label">Fund</span>
@@ -449,7 +467,7 @@ function Dashboard() {
             onClick={handleSync}
             disabled={isSyncing}
           >
-            <div className="action-icon">
+            <div className={`action-icon ${isOffline ? "offline-action" : ""}`}>
               <span className={isSyncing ? "spin-wrap" : ""}>
                 <RefreshCw size={18} strokeWidth={1.8} />
               </span>
@@ -602,6 +620,11 @@ function Dashboard() {
           </div>
         </div>
       )}
+
+      <NoInternetModal
+        show={noInternetModal}
+        onClose={() => setNoInternetModal(false)}
+      />
     </div>
   );
 }

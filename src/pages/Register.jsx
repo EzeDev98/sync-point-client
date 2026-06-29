@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { registerUser } from "../services/api";
+import { useNetwork } from "../hooks/useNetwork";
 import "../styles/register.css";
 
 function Register() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
+  const { isOffline } = useNetwork();
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -94,6 +96,11 @@ function Register() {
   async function handleSubmit(e) {
     e.preventDefault();
 
+    if (isOffline) {
+      navigate("/offline", { state: { returnTo: "/register" } });
+      return;
+    }
+
     const validationErrors = validateStep2();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
@@ -125,23 +132,47 @@ function Register() {
 }
 
   return (
-    <div className="auth-page--register">
+      <div className="auth-page--register">
       <div className="auth-card auth-card--wide">
         <div className="auth-header auth-header--centered">
-          <h1 className="auth-title">Create your account</h1>
+      
+          <h1 className="auth-title" style={{ marginTop: 12 }}>
+            Create your account
+          </h1>
+
           <p className="auth-subtitle">Join SyncPoint Today</p>
+
           <div className="step-indicator">
             <div className={`step ${step === 1 ? "active" : "completed"}`}>
               <span className="step-number">1</span>
               <span className="step-label">Basic Info</span>
             </div>
+
             <div className="step-line"></div>
+
             <div className={`step ${step === 2 ? "active" : ""}`}>
               <span className="step-number">2</span>
               <span className="step-label">Security & Demographics</span>
             </div>
           </div>
         </div>
+
+        {isOffline && (
+          <div
+            style={{
+              background: "#FEF3C7",
+              border: "1px solid #F59E0B",
+              borderRadius: 8,
+              padding: "10px 14px",
+              fontSize: 13,
+              color: "#92400E",
+              marginBottom: 16,
+              textAlign: "center",
+            }}
+          >
+            📡 You're offline. Connect to the internet to register.
+          </div>
+        )}
 
         <form className="auth-form" onSubmit={handleSubmit} noValidate>
           <div className="form-slider-horizontal">

@@ -4,6 +4,8 @@ import { verifyWalletPin } from "../services/api";
 import { readPersisted } from "../services/sessionUtils";
 import { restoreEncryption, initializeEncryption } from "../services/cryptoService";
 import { startAutoSync } from "../services/syncService";
+import { saveOfflinePinVerifier } from "../services/savePinVerifier";
+import { useNetwork } from "../hooks/useNetwork";
 import "../styles/auth.css";
 
 function PinVerification() {
@@ -14,6 +16,7 @@ function PinVerification() {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorModal, setErrorModal] = useState({ show: false, message: "" });
+  const { isOffline } = useNetwork();
 
   // Read walletId from localStorage (persisted across app closure)
   const walletId = readPersisted("walletId");
@@ -64,12 +67,23 @@ function PinVerification() {
     setIsSubmitting(true);
 
     try {
-      const isValid = await verifyWalletPin(walletId, pin);
+
+      let isValid;
+
+      if (isOffline) {
+          isValid = await verifyOfflinePin(pin);
+      } else {
+          isValid = await verifyWalletPin(walletId, pin);
+      }
 
       if (!isValid) {
         setErrors({ pin: "Invalid PIN. Please try again." });
         setPin("");
         return;
+      }
+
+      if (!isOffline) {
+          await saveOfflinePinVerifier(pin);
       }
 
        // ── Restore encryption context ─────────────────────────────────────
@@ -83,28 +97,23 @@ function PinVerification() {
         await initializeEncryption(pin);
       }
 
-      // ── Store PIN verification proof ───────────────────────────────────
-      const salt = crypto.getRandomValues(new Uint8Array(32));
-      const encoder = new TextEncoder();
-      const baseKey = await crypto.subtle.importKey(
-        "raw", encoder.encode(pin), "PBKDF2", false, ["deriveBits"]
-      );
-      const derivedBits = await crypto.subtle.deriveBits(
-        { name: "PBKDF2", salt, iterations: 600000, hash: "SHA-256" },
-        baseKey, 256
-      );
-      sessionStorage.setItem("pin_salt", btoa(String.fromCharCode(...salt)));
-      sessionStorage.setItem("pin_verifier", btoa(String.fromCharCode(...new Uint8Array(derivedBits))));
-      sessionStorage.setItem("pin_verified_at", Date.now().toString());
-
       // ── Restart auto-sync scheduler ────────────────────────────────────
       // startAutoSync listens for the "online" event and processes pending
       // transactions. We kick it off here so it starts immediately after
       // the wallet is unlocked without requiring a full login.
-      startAutoSync((result) => {
-        console.log("[PinVerification] Auto-sync on resume:", result);
-        window.dispatchEvent(new CustomEvent("sync-result", { detail: result }));
-      });
+
+
+      if (!isOffline) {
+          startAutoSync((result) => {
+              console.log("[PinVerification] Auto-sync on resume:", result);
+
+              window.dispatchEvent(
+                  new CustomEvent("sync-result", {
+                      detail: result,
+                  })
+              );
+          });
+      }
 
       navigate("/dashboard", { replace: true });
 
@@ -117,6 +126,47 @@ function PinVerification() {
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  async function verifyOfflinePin(pin) {
+    const storedSalt = localStorage.getItem("pin_salt");
+    const storedVerifier = localStorage.getItem("pin_verifier");
+
+    if (!storedSalt || !storedVerifier) {
+        return false;
+    }
+
+    const salt = Uint8Array.from(
+        atob(storedSalt),
+        c => c.charCodeAt(0)
+    );
+
+    const encoder = new TextEncoder();
+
+    const baseKey = await crypto.subtle.importKey(
+        "raw",
+        encoder.encode(pin),
+        "PBKDF2",
+        false,
+        ["deriveBits"]
+    );
+
+    const derivedBits = await crypto.subtle.deriveBits(
+        {
+            name: "PBKDF2",
+            salt,
+            iterations: 600000,
+            hash: "SHA-256",
+        },
+        baseKey,
+        256
+    );
+
+    const verifier = btoa(
+        String.fromCharCode(...new Uint8Array(derivedBits))
+    );
+
+    return verifier === storedVerifier;
   }
 
   return (

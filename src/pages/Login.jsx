@@ -3,14 +3,16 @@ import { Link, useNavigate } from "react-router-dom";
 import { loginUser, checkPinSet } from "../services/api";
 import { persistValue, hasResumableSession } from "../services/sessionUtils";
 import { refreshOnStartup } from "../services/token";
+import { useNetwork } from "../hooks/useNetwork";
 import "../styles/login.css";
+import { getIsOnline } from "../services/networkService";
 
 function Login() {
   const navigate = useNavigate();
+  const { isOffline } = useNetwork();
   const [showPinModal, setShowPinModal] = useState(false);
   const [errorModal, setErrorModal] = useState({ show: false, message: "" });
   const [isCheckingSession, setIsCheckingSession] = useState(true);
-
   const [formData, setFormData] = useState({
     phoneNumber: "",
     password: "",
@@ -20,7 +22,6 @@ function Login() {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // ── Startup check: resume session if possible ────────────────────────────
   useEffect(() => {
     async function checkExistingSession() {
       if (!hasResumableSession()) {
@@ -28,14 +29,18 @@ function Login() {
         return;
       }
 
-      try {
+      // If offline, skip network checks and go straight to PIN
+      // (the user can unlock their wallet offline)
+      if (!getIsOnline()) {
+        navigate("/verifypin", { replace: true });
+        return;
+      }
 
-        // Refresh token exists — get a new access token silently
+      try {
+  
         await refreshOnStartup();
-        // Success — go straight to PIN verification
         navigate("/verifypin", { replace: true });
       } catch {
-        // Refresh token is expired or invalid — show login normally
         setIsCheckingSession(false);
       }
     }
@@ -65,6 +70,12 @@ function Login() {
   async function handleSubmit(e) {
     e.preventDefault();
 
+    // Offline guard — redirect to /offline page instead of sending request
+    if (isOffline) {
+      navigate("/offline", { state: { returnTo: "/login" } });
+      return;
+    }
+
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
@@ -76,7 +87,7 @@ function Login() {
     try {
       const data = await loginUser(formData.phoneNumber, formData.password);
 
-      // ── Persistent identity (survives app closure) ─────────────────────
+      // Fresh wallet — persist everything and initialize normally
       persistValue("walletId", data.wallet_id);
       persistValue("userId", data.user_id);
       persistValue("phoneNumber", data.phone_number);
@@ -91,24 +102,7 @@ function Login() {
       persistValue("refreshTokenExpiresIn", data.refreshTokenExpiresIn);
       persistValue("tokenIssuedAt", Date.now().toString());
 
-      // ── Temporary session (gone on tab close) ──────────────────────────
-      sessionStorage.setItem("sessionToken", data.token);
-      sessionStorage.setItem("accessTokenExpiresIn", data.accessTokenExpiresIn);
-
-      // Mirror persistent values into sessionStorage so existing code that
-      // reads sessionStorage.getItem("walletId") etc. keeps working
-      sessionStorage.setItem("walletId", data.wallet_id);
-      sessionStorage.setItem("userId", data.user_id);
-      sessionStorage.setItem("phoneNumber", data.phone_number);
-      sessionStorage.setItem("username", data.username);
-      sessionStorage.setItem("email", data.email);
-      sessionStorage.setItem("userRefId", data.user_ref_id);
-      sessionStorage.setItem("firstName", data.first_name);
-      sessionStorage.setItem("middleName", data.middle_name);
-      sessionStorage.setItem("lastName", data.last_name);
-
       const pinSet = await checkPinSet(data.wallet_id);
-
       if (pinSet === false) {
         setShowPinModal(true);
       } else {
@@ -125,12 +119,13 @@ function Login() {
     }
   }
 
-  // Show nothing while checking for an existing session
   if (isCheckingSession) {
     return (
       <div className="auth-page">
         <div className="auth-card" style={{ textAlign: "center", padding: "48px 24px" }}>
-          <p style={{ color: "#6B7280", fontSize: 14 }}>Checking session...</p>
+          <p style={{ color: "#6B7280", fontSize: 14, marginTop: 16 }}>
+            Checking session...
+          </p>
         </div>
       </div>
     );
@@ -139,10 +134,25 @@ function Login() {
   return (
     <div className="auth-page">
       <div className="auth-card">
-        <div className="auth-header">
-          <h1 className="auth-title">Welcome back</h1>
+        <div className="auth-header" style={{ textAlign: "center" }}>
+          <h1 className="auth-title" style={{ marginTop: 12 }}>Welcome back</h1>
           <p className="auth-subtitle">Sign in to your account</p>
         </div>
+
+        {isOffline && (
+          <div style={{
+            background: "#FEF3C7",
+            border: "1px solid #F59E0B",
+            borderRadius: 8,
+            padding: "10px 14px",
+            fontSize: 13,
+            color: "#92400E",
+            marginBottom: 16,
+            textAlign: "center",
+          }}>
+            📡 You're offline. Connect to the internet to sign in.
+          </div>
+        )}
 
         <form className="auth-form" onSubmit={handleSubmit} noValidate>
           <div className="form-section">

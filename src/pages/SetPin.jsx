@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { setWalletPin } from "../services/api";
+import { useNetwork } from "../hooks/useNetwork";
+import { saveOfflinePinVerifier } from "../services/savePinVerifier";
 import "../styles/auth.css";
 
 function SetPin() {
@@ -9,6 +11,7 @@ function SetPin() {
   const [formData, setFormData] = useState({ pin: "", confirmNewPin: "" });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { isOffline } = useNetwork();
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -33,6 +36,14 @@ function SetPin() {
 
   async function handleSubmit(e) {
     e.preventDefault();
+
+      if (isOffline) {
+        navigate("/offline", {
+          state: { returnTo: "/set-pin" },
+        });
+        return;
+      }
+
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
@@ -43,36 +54,9 @@ function SetPin() {
 
     try {
       
-      await setWalletPin(formData.pin, formData.confirmNewPin);
+        await setWalletPin(formData.pin, formData.confirmNewPin);
 
-        const salt = crypto.getRandomValues(new Uint8Array(32));
-        const encoder = new TextEncoder();
-        const pinBuffer = encoder.encode(formData.pin);
-        
-        const baseKey = await crypto.subtle.importKey(
-          'raw',
-          pinBuffer,
-          'PBKDF2',
-          false,
-          ['deriveBits']
-        );
-        
-        const derivedBits = await crypto.subtle.deriveBits(
-          {
-            name: 'PBKDF2',
-            salt: salt,
-            iterations: 600000,
-            hash: 'SHA-256',
-          },
-          baseKey,
-          256
-        );
-        
-        const verifier = new Uint8Array(derivedBits);
-      
-        sessionStorage.setItem('pin_salt', btoa(String.fromCharCode(...salt)));
-        sessionStorage.setItem('pin_verifier', btoa(String.fromCharCode(...verifier)));
-        sessionStorage.setItem('pin_verified_at', Date.now().toString());
+        await saveOfflinePinVerifier(formData.pin);
 
         navigate("/dashboard");
 

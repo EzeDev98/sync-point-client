@@ -12,6 +12,7 @@ import {
 } from "./indexedDbService";
 import { syncTransaction, fetchUpdatedBalance } from "./api";
 import { calculateOfflineBalance } from "./walletLedger";
+import { getIsOnline } from "./networkService";
 
 /**
  * Sync all PENDING transactions to the server.
@@ -94,7 +95,7 @@ export async function syncPendingTransactions(onProgress) {
 
   // Refresh local balance from server after sync
   const walletId = localStorage.getItem("walletId") || sessionStorage.getItem("walletId");
-  if (walletId) {
+  if (walletId && getIsOnline()) {
     try {
       await fetchUpdatedBalance(walletId);
       // After sync, the server balance is authoritative.
@@ -105,7 +106,9 @@ export async function syncPendingTransactions(onProgress) {
         new CustomEvent("balance-updated", { detail: { balance: ledgerBalance } })
       );
     } catch (err) {
-      console.error("[SyncService] Balance refresh failed:", err.message);
+      if (getIsOnline()) {
+        console.error("[SyncService] Balance refresh failed:", err.message);
+      }
     }
   }
 
@@ -170,7 +173,9 @@ export function startAutoSync(onSyncComplete) {
       console.log("[SyncService] Auto sync result:", result);
       if (onSyncComplete) onSyncComplete(result);
     } catch (err) {
-      console.error("[SyncService] Auto sync failed:", err.message);
+      if (getIsOnline()) {
+        console.error("[SyncService] Auto sync failed:", err.message);
+      }
     }
   }
 

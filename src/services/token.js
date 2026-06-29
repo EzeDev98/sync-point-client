@@ -1,5 +1,6 @@
 import { refreshToken } from "./api";
 import { clearTokenSession, readPersisted, persistValue } from "./sessionUtils";
+import { getIsOnline } from "./networkService";
 
 const REFRESH_BUFFER_MS = 60_000;
 
@@ -54,12 +55,20 @@ export async function getValidToken() {
       window.dispatchEvent(new CustomEvent("session-expired"));
       throw new Error("SESSION_EXPIRED");
     }
+
+    if (!getIsOnline()) {
+      return sessionStorage.getItem("sessionToken");
+    }
+
     try {
       return await doRefresh();
     } catch (err) {
-      console.error("[token] Refresh failed:", err);
-      clearTokenSession();
-      window.dispatchEvent(new CustomEvent("session-expired"));
+
+      if (getIsOnline()) {
+        console.error("[token] Refresh failed:", err);
+        clearTokenSession();
+        window.dispatchEvent(new CustomEvent("session-expired"));
+      }
       throw new Error("SESSION_EXPIRED", err);
     }
   }

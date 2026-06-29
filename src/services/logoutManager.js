@@ -7,11 +7,12 @@
 // ============================================
 
 import { getPendingCount } from "./indexedDbService";
-import { syncPendingTransactions, isOnline } from "./syncService";
+import { syncPendingTransactions } from "./syncService";
 import { logoutUser } from "./api";
 import { clearAuthSession } from "./sessionUtils";
 import { clearAllTransactions } from "./indexedDbService";
 import { calculateOfflineBalance } from "./walletLedger";
+import { getIsOnline } from "./networkService";
 
 /**
  * The three conditions that must ALL be true before logout is allowed:
@@ -31,7 +32,7 @@ async function getLogoutBlockers() {
  * Returns the sync result or throws if offline.
  */
 async function forceSyncBeforeLogout() {
-  if (!isOnline()) {
+  if (!getIsOnline()) {
     throw new Error("OFFLINE");
   }
   return syncPendingTransactions();
@@ -82,7 +83,7 @@ export async function requestLogout({
 
     // ── Rule 2 & 3: pending transactions must sync before logout ──────────
     if (pending > 0) {
-      if (!isOnline()) {
+      if (!getIsOnline()) {
         onError?.(
           "You have unsynced transactions and no internet connection. " +
           "Please reconnect and try again before logging out."

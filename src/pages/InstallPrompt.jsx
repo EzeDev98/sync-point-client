@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { isPWAInstalled } from "../services/deviceCompatibility";
+import AppLogo from "../components/AppLogo";
 
 function InstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState(() => {
@@ -72,11 +73,7 @@ function InstallPrompt() {
         justifyContent: "center",
         flexShrink: 0,
       }}>
-        <svg width="22" height="22" viewBox="0 0 14 14" fill="none">
-          <path d="M7 1C4.5 1 2.5 2.8 2 5" stroke="white" strokeWidth="1.5" strokeLinecap="round" />
-          <path d="M12 9C11.5 11.2 9.5 13 7 13C4.5 13 2.5 11.2 2 9" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeDasharray="2 2" />
-          <circle cx="7" cy="7" r="1.5" fill="white" stroke="white" strokeWidth="1" />
-        </svg>
+        <AppLogo size={44} />
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
