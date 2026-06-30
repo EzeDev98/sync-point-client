@@ -93,3 +93,10 @@ export function readPersisted(key) {
 export function hasResumableSession() {
   return !!localStorage.getItem("refreshToken");
 }
+
+/**
+ * Check if there's an active session with access token
+ */
+export function hasActiveSession() {
+  return !!sessionStorage.getItem("sessionToken") && hasResumableSession();
+}
