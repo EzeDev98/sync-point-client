@@ -4,6 +4,9 @@ import { loginUser, checkPinSet } from "../services/api";
 import { persistValue, hasResumableSession } from "../services/sessionUtils";
 import { refreshOnStartup } from "../services/token";
 import { useNetwork } from "../hooks/useNetwork";
+import UpdateModal from "../components/UpdateModal";
+import { checkForUpdate, markPromptSeen } from "../services/versionService";
+import { performHardReset } from "../services/hardReset";
 import "../styles/login.css";
 import { getIsOnline } from "../services/networkService";
 
@@ -13,6 +16,8 @@ function Login() {
   const [showPinModal, setShowPinModal] = useState(false);
   const [errorModal, setErrorModal] = useState({ show: false, message: "" });
   const [isCheckingSession, setIsCheckingSession] = useState(true);
+  const [updateInfo, setUpdateInfo] = useState({ show: false, remoteBuildId: null });
+  const [isUpdating, setIsUpdating] = useState(false);
   const [formData, setFormData] = useState({
     phoneNumber: "",
     password: "",
@@ -21,23 +26,32 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
 
   useEffect(() => {
-    async function checkExistingSession() {
+ 
+    async function checkUpdateThenSession() {
+      if (getIsOnline()) {
+        const { updateAvailable, remoteBuildId } = await checkForUpdate();
+        if (updateAvailable) {
+          setUpdateInfo({ show: true, remoteBuildId });
+          setIsCheckingSession(false);
+          return; 
+        }
+      }
+
+      // No update (or offline, where we can't check) — proceed exactly as before
       if (!hasResumableSession()) {
         setIsCheckingSession(false);
         return;
       }
 
-      // If offline, skip network checks and go straight to PIN
-      // (the user can unlock their wallet offline)
       if (!getIsOnline()) {
         navigate("/verifypin", { replace: true });
         return;
       }
 
       try {
-  
         await refreshOnStartup();
         navigate("/verifypin", { replace: true });
       } catch {
@@ -45,8 +59,26 @@ function Login() {
       }
     }
 
-    checkExistingSession();
+    checkUpdateThenSession();
   }, [navigate]);
+
+  function handleUpdateLater() {
+    if (updateInfo.remoteBuildId) markPromptSeen(updateInfo.remoteBuildId);
+    setUpdateInfo({ show: false, remoteBuildId: null });
+    setIsCheckingSession(false); // fall through to normal login screen
+  }
+
+  async function handleUpdateNow() {
+    setIsUpdating(true);
+    try {
+      await performHardReset(); // navigates away; nothing after this runs
+    } catch (err) {
+      console.error("[Login] Hard reset failed:", err);
+      setIsUpdating(false);
+      setUpdateInfo({ show: false, remoteBuildId: null });
+      setIsCheckingSession(false);
+    }
+  }
 
   function handleChange(e) {
     const { name, value, type, checked } = e.target;
@@ -70,7 +102,6 @@ function Login() {
   async function handleSubmit(e) {
     e.preventDefault();
 
-    // Offline guard — redirect to /offline page instead of sending request
     if (isOffline) {
       navigate("/offline", { state: { returnTo: "/login" } });
       return;
@@ -87,7 +118,6 @@ function Login() {
     try {
       const data = await loginUser(formData.phoneNumber, formData.password);
 
-      // Fresh wallet — persist everything and initialize normally
       persistValue("walletId", data.wallet_id);
       persistValue("userId", data.user_id);
       persistValue("phoneNumber", data.phone_number);
@@ -252,6 +282,14 @@ function Login() {
             </button>
           </div>
         </div>
+      )}
+
+      {updateInfo.show && (
+        <UpdateModal
+          onLater={handleUpdateLater}
+          onUpdate={handleUpdateNow}
+          isUpdating={isUpdating}
+        />
       )}
     </div>
   );

@@ -15,6 +15,7 @@ export default defineConfig([
     ],
     languageOptions: {
       globals: globals.browser,
+       __APP_BUILD_ID__: "readonly",
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
   },

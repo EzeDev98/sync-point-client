@@ -2,7 +2,7 @@
 // SERVICE WORKER — SyncPoint
 // ============================================
 
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = '__SW_BUILD_ID__';
 const CACHE_NAME = `syncpoint-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline.html';
 const SHELL_URL = '/index.html';
