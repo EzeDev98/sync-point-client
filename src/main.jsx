@@ -1,7 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import DeviceGate from './pages/DeviceGate'
-import InstallPrompt from './pages/InstallPrompt'
+import InstallGate from './pages/InstallGate'
 import './index.css'
 import App from './App.jsx'
 
@@ -14,8 +14,9 @@ window.addEventListener('beforeinstallprompt', (e) => {
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <DeviceGate>
-      <App />
-      <InstallPrompt />
+      <InstallGate>
+        <App />
+      </InstallGate>
     </DeviceGate>
   </StrictMode>,
 )

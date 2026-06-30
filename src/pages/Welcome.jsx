@@ -113,30 +113,7 @@ function Welcome() {
         flexDirection: "column",
         gap: 12,
       }}>
-        {showInstallButton && (
-          <button
-            onClick={handleInstall}
-            style={{
-              width: "100%",
-              padding: "14px",
-              background: "#0F766E",
-              color: "#FFFFFF",
-              border: "none",
-              borderRadius: 10,
-              fontSize: 15,
-              fontWeight: 600,
-              cursor: "pointer",
-              fontFamily: "inherit",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 8,
-            }}
-          >
-            📲 Install App
-          </button>
-        )}
-
+        
         <button
           onClick={() => navigate("/login")}
           style={{
