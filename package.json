@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port 3030",
-    "prebuild": "node scripts/generate-version.mjs",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
