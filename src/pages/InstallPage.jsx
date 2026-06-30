@@ -27,16 +27,26 @@ function InstallPage() {
   const countdownRef = useRef(null);
 
   useEffect(() => {
-    // If already installed, skip everything
     if (isPWAInstalled()) {
       navigate("/welcome", { replace: true });
       return;
     }
 
-    // Listen for the browser's install prompt
+    // Event may have already fired before this component mounted
+    if (window.__installPrompt) {
+      deferredPromptRef.current = window.__installPrompt;
+      window.__installPrompt = null;
+      clearTimeout(timerRef.current);
+      clearInterval(countdownRef.current);
+      setPhase("ready");
+      return;
+    }
+
+    // Not yet fired — listen for it
     function handleBeforeInstallPrompt(e) {
       e.preventDefault();
       deferredPromptRef.current = e;
+      window.__installPrompt = null;
       clearTimeout(timerRef.current);
       clearInterval(countdownRef.current);
       setPhase("ready");
@@ -44,7 +54,6 @@ function InstallPage() {
 
     window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
 
-    // Also listen for appinstalled (e.g. user installs via browser UI)
     function handleAppInstalled() {
       clearTimeout(timerRef.current);
       clearInterval(countdownRef.current);
@@ -53,7 +62,6 @@ function InstallPage() {
 
     window.addEventListener("appinstalled", handleAppInstalled);
 
-    // Start countdown timer — fall back to manual after PROMPT_TIMEOUT_MS
     timerRef.current = setTimeout(() => {
       clearInterval(countdownRef.current);
       setPhase("manual");
@@ -61,10 +69,7 @@ function InstallPage() {
 
     countdownRef.current = setInterval(() => {
       setSecondsLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(countdownRef.current);
-          return 0;
-        }
+        if (prev <= 1) { clearInterval(countdownRef.current); return 0; }
         return prev - 1;
       });
     }, 1000);

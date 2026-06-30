@@ -4,6 +4,15 @@ import DeviceGate from './pages/DeviceGate'
 import './index.css'
 import App from './App.jsx'
 
+// Capture beforeinstallprompt as early as possible — before any component
+// mounts. InstallPage reads from window.__installPrompt when it's ready.
+window.__installPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault(); // suppress the browser's default mini-infobar
+  window.__installPrompt = e;
+  console.log('[main] beforeinstallprompt captured');
+});
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <DeviceGate>
