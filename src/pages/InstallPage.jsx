@@ -129,8 +129,7 @@ function InstallPage() {
       <div style={styles.card}>
 
         <div style={styles.brand}>
-          <AppLogo size={52} />
-          <h1 style={styles.appName}>Install SyncPoint</h1>
+      
         </div>
 
         {/* ── WAITING ─────────────────────────────────────── */}
