@@ -631,7 +631,7 @@ function SendMoney() {
               <div style={{ background: "#fff", padding: 12, borderRadius: 8, border: "1px solid #E5E7EB" }}>
                 <QRCodeSVG
                   value={JSON.stringify(transactionPayload)}
-                  size={160}
+                  size={360}
                   bgColor="#FFFFFF"
                   fgColor="#111827"
                   level="M"

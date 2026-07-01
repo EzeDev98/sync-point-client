@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
@@ -20,6 +20,7 @@ function ReceivePayment() {
   const timerRef = useRef(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorModal, setErrorModal] = useState({ show: false, message: "" });
+  const [createdAt, setCreatedAt] = useState("");
 
   const scannerRef = useRef(null);
   const isScannerRunningRef = useRef(false);
@@ -68,19 +69,31 @@ function ReceivePayment() {
     };
   }, []);
 
-  const qrPayload = JSON.stringify({
-    type: "PAYMENT_REQUEST",
+  const qrPayload = useMemo(() => {
+    if (!requestRef) return "";
+    return JSON.stringify({
+      type: "PAYMENT_REQUEST",
+      requestRef,
+      receiverWalletId,
+      receiverPhone,
+      receiverName,
+      amount: Number(formData.amount),
+      currency: "NGN",
+      description: formData.description || null,
+      status: "PENDING",
+      createdAt,
+      expiresAt,
+    });
+  }, [
     requestRef,
     receiverWalletId,
     receiverPhone,
     receiverName,
-    amount: Number(formData.amount),
-    currency: "NGN",
-    description: formData.description || null,
-    status: "PENDING",
-    createdAt: new Date().toISOString(),
+    formData.amount,
+    formData.description,
+    createdAt,
     expiresAt,
-  });
+  ]);
 
   useEffect(() => {
     if (screen !== "qr") return;
@@ -319,7 +332,10 @@ function ReceivePayment() {
 
     const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
     const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const now = new Date().toISOString();
+
     setRequestRef(`REQ-${date}-${random}`);
+    setCreatedAt(now);                 // frozen at generation time
     setExpiresAt(new Date(Date.now() + 5 * 60 * 1000).toISOString());
     setTimeLeft(300);
     setQrExpired(false);
@@ -442,7 +458,7 @@ function ReceivePayment() {
               ) : (
                 <QRCodeSVG
                   value={qrPayload}
-                  size={160}
+                  size={320}
                   bgColor="#FFFFFF"
                   fgColor="#111827"
                   level="M"

@@ -1415,8 +1415,8 @@
 }
 
 .qr-box {
-  width: 190px;
-  height: 190px;
+  width: 350px;
+  height: 350px;
   background: #FFFFFF;
   border: 1px solid #E5E7EB;
   border-radius: 12px;
@@ -1594,7 +1594,7 @@
 
 /* RESPONSIVE */
 @media (max-width: 480px) {
-  .qr-box { width: 170px; height: 170px; }
+  .qr-box { width: 260px; height: 260px; }
   .qr-amount { font-size: 24px; }
   .confirm-amount { font-size: 28px; }
   .success-amount { font-size: 30px; }
