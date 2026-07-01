@@ -174,12 +174,8 @@ function SendMoney() {
     if (
       scannerStatusRef.current === "starting" ||
       scannerStatusRef.current === "running"
-    ) {
-      return;
-    }
-    if (scannerStatusRef.current === "stopping") {
-      return;
-    }
+    ) return;
+    if (scannerStatusRef.current === "stopping") return;
 
     scannerStatusRef.current = "starting";
     const myGeneration = ++scanGenerationRef.current;
@@ -189,52 +185,111 @@ function SendMoney() {
       return;
     }
 
-    try {
+    // Wait for the DOM element to actually exist before handing it to html5-qrcode.
+    // On first mount (especially in StrictMode), the effect fires before the
+    // element is fully painted, causing html5-qrcode to throw a non-Error object.
+    let domReady = false;
+    for (let i = 0; i < 10; i++) {
+      if (document.getElementById("qr-reader")) {
+        domReady = true;
+        break;
+      }
+      await new Promise((r) => setTimeout(r, 100));
+    }
+
+    if (!domReady) {
+      scannerStatusRef.current = "idle";
+      return;
+    }
+
+    if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) {
+      scannerStatusRef.current = "idle";
+      return;
+    }
+
+    const attempts = [
+      { facingMode: { ideal: "environment" } },
+      { facingMode: "user" },
+    ];
+
+    for (const constraint of attempts) {
+      if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) {
+        scannerStatusRef.current = "idle";
+        return;
+      }
+
+      await destroyScanner();
       const instance = new Html5Qrcode("qr-reader");
       html5QrCodeRef.current = instance;
 
-      await instance.start(
-        { facingMode: { ideal: "environment" } }, // ← no getCameras(), same as ReceivePayment
-        { fps: 10, qrbox: { width: 250, height: 250 } },
-        onScanSuccess,
-        onScanError
-      );
+      try {
+        await instance.start(
+          constraint,
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          onScanSuccess,
+          onScanError
+        );
 
-      if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) {
-        await instance.stop().catch(() => {});
-        instance.clear?.();
+        if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) {
+          await instance.stop().catch(() => {});
+          instance.clear?.();
+          html5QrCodeRef.current = null;
+          scannerStatusRef.current = "idle";
+          return;
+        }
+
+        scannerStatusRef.current = "running";
+        return;
+
+      } catch {
         html5QrCodeRef.current = null;
-        scannerStatusRef.current = "idle";
-        return;
+        try { instance.clear?.(); } catch { /* ignore */ }
       }
-
-      scannerStatusRef.current = "running";
-
-    } catch (err) {
-      if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) {
-        scannerStatusRef.current = "idle";
-        return;
-      }
-
-      console.error("[SendMoney] Failed to start scanner:", err?.name, err?.message);
-      html5QrCodeRef.current = null;
-      scannerStatusRef.current = "idle";
-
-      const errName = err?.name || "";
-      const isPermissionError =
-        errName === "NotAllowedError" ||
-        errName === "PermissionDeniedError" ||
-        errName === "NotFoundError" ||
-        errName === "NotReadableError";
-
-      setErrorModal({
-        show: true,
-        message: isPermissionError
-          ? "Unable to access camera. Please check camera permissions."
-          : err.message || "Camera failed to start. Please try again.",
-      });
     }
-  }, [onScanSuccess, onScanError]);
+
+    // All attempts failed — try by explicit device ID as last resort
+    try {
+      const cameras = await Html5Qrcode.getCameras();
+      if (cameras && cameras.length > 0) {
+        if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) {
+          scannerStatusRef.current = "idle";
+          return;
+        }
+
+        const instance = new Html5Qrcode("qr-reader");
+        html5QrCodeRef.current = instance;
+
+        await instance.start(
+          cameras[0].id,
+          { fps: 10, qrbox: { width: 250, height: 250 } },
+          onScanSuccess,
+          onScanError
+        );
+
+        if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) {
+          await instance.stop().catch(() => {});
+          instance.clear?.();
+          html5QrCodeRef.current = null;
+          scannerStatusRef.current = "idle";
+          return;
+        }
+
+        scannerStatusRef.current = "running";
+        return;
+      }
+    } catch { /* fall through */ }
+
+    if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) {
+      scannerStatusRef.current = "idle";
+      return;
+    }
+
+    scannerStatusRef.current = "idle";
+    setErrorModal({
+      show: true,
+      message: "Unable to access camera. Please check that camera permissions are granted and try again.",
+    });
+  }, [onScanSuccess, onScanError, destroyScanner]);
 
   useEffect(() => {
     let active = true;
