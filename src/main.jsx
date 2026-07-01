@@ -13,6 +13,11 @@ window.addEventListener('beforeinstallprompt', (e) => {
   console.log('[main] beforeinstallprompt captured');
 });
 
+window.addEventListener('appinstalled', () => {
+  localStorage.setItem('pwa_installed', 'true');
+  console.log('[main] appinstalled — flag set');
+});
+
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <DeviceGate>
