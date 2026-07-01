@@ -33,6 +33,18 @@ function SendMoney() {
 
   const isSessionValid = Boolean(senderWalletId && senderPhone);
 
+  // Kept in sync with offlineBalance state, but read inside onScanSuccess
+  // via .current instead of closing over the state value directly. This is
+  // the fix: without it, the balance resolving shortly after mount changes
+  // onScanSuccess's identity mid-scan, which cascades into startScanner and
+  // re-fires the screen effect — restarting the scanner while html5-qrcode's
+  // first start() call is still in flight. That's what produced "Cannot
+  // clear while scan is ongoing" and the removeChild/AbortError errors.
+  const offlineBalanceRef = useRef(0);
+  useEffect(() => {
+    offlineBalanceRef.current = offlineBalance;
+  }, [offlineBalance]);
+
   // Load balance from ledger on mount
   useEffect(() => {
     calculateOfflineBalance()
@@ -122,10 +134,12 @@ function SendMoney() {
           return;
         }
 
-        if (payload.amount > offlineBalance) {
+        const currentBalance = offlineBalanceRef.current;
+
+        if (payload.amount > currentBalance) {
           setErrorModal({
             show: true,
-            message: `Insufficient balance. You have ₦${offlineBalance.toLocaleString()} but need ₦${payload.amount.toLocaleString()}.`,
+            message: `Insufficient balance. You have ₦${currentBalance.toLocaleString()} but need ₦${payload.amount.toLocaleString()}.`,
           });
           return;
         }
@@ -150,7 +164,7 @@ function SendMoney() {
         });
       }
     },
-    [senderWalletId, offlineBalance, stopScanner]
+    [senderWalletId, stopScanner]
   );
 
   const onScanError = useCallback(() => {}, []);
@@ -688,6 +702,7 @@ function SendMoney() {
 }
 
 export default SendMoney;
+
 
 
 
