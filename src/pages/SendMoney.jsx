@@ -19,11 +19,11 @@ function SendMoney() {
   const [errorModal, setErrorModal] = useState({ show: false, message: "" });
   const [offlineBalance, setOfflineBalance] = useState(0);
 
-  const html5QrCodeRef = useRef(null);
+  // --- Scanner lifecycle refs: identical pattern to ReceivePayment.jsx ---
+  const scannerRef = useRef(null);
+  const isScannerRunningRef = useRef(false);
   const isMountedRef = useRef(true);
-  const scannerStatusRef = useRef("idle");
-  const scanGenerationRef = useRef(0);
-  const startPromiseRef = useRef(null);
+  const pendingTransitionRef = useRef(Promise.resolve());
 
   const senderWalletId = localStorage.getItem("walletId") || sessionStorage.getItem("walletId");
   const senderPhone = localStorage.getItem("phoneNumber") || sessionStorage.getItem("phoneNumber");
@@ -33,6 +33,7 @@ function SendMoney() {
 
   const isSessionValid = Boolean(senderWalletId && senderPhone);
 
+  // Load balance from ledger on mount
   useEffect(() => {
     calculateOfflineBalance()
       .then(setOfflineBalance)
@@ -45,259 +46,225 @@ function SendMoney() {
     }
   }, [isSessionValid, navigate]);
 
-  const destroyScanner = useCallback(async () => {
-    // Wait for any in-progress start to finish before tearing down
-    if (startPromiseRef.current) {
-      await startPromiseRef.current.catch(() => {});
-      startPromiseRef.current = null;
-    }
-
-    const instance = html5QrCodeRef.current;
-    html5QrCodeRef.current = null;
-
-    if (!instance) return;
-
-    try {
-      const state = typeof instance.getState === "function" ? instance.getState() : null;
-      if (state === 2 || state === 3) {
-        await instance.stop();
-      }
-    } catch (err) {
-      console.warn("[SendMoney] destroyScanner stop warning:", err?.message || err);
-    }
-
-    try {
-      instance.clear?.();
-    } catch (err) {
-      console.warn("[SendMoney] destroyScanner clear warning:", err?.message || err);
-    }
-  }, []);
-
+  // Mount/unmount tracking + final cleanup — identical to ReceivePayment.jsx
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
-      scanGenerationRef.current += 1;
-      scannerStatusRef.current = "stopping";
-      destroyScanner().then(() => {
-        scannerStatusRef.current = "idle";
-      });
+      pendingTransitionRef.current = pendingTransitionRef.current
+        .catch(() => {})
+        .then(() => {
+          if (scannerRef.current && isScannerRunningRef.current) {
+            isScannerRunningRef.current = false;
+            return scannerRef.current.stop().catch(() => {});
+          }
+        });
     };
-  }, [destroyScanner]);
+  }, []);
 
+  // stopScanner — identical pattern to ReceivePayment.jsx
   const stopScanner = useCallback(async () => {
-    if (
-      scannerStatusRef.current === "idle" ||
-      scannerStatusRef.current === "stopping"
-    ) return;
-    scanGenerationRef.current += 1;
-    scannerStatusRef.current = "stopping";
-    await destroyScanner();
-    scannerStatusRef.current = "idle";
-  }, [destroyScanner]);
+    const operation = pendingTransitionRef.current
+      .catch(() => {})
+      .then(async () => {
+        if (scannerRef.current && isScannerRunningRef.current) {
+          isScannerRunningRef.current = false;
+          try {
+            await scannerRef.current.stop();
+          } catch (err) {
+            console.warn("[SendMoney] stop() warning:", err?.message || err);
+          }
+        }
+      });
+
+    pendingTransitionRef.current = operation;
+    await operation;
+  }, []);
 
   const onScanSuccess = useCallback(
-    (decodedText) => {
+    async (decodedText) => {
       if (!isMountedRef.current) return;
+
+      await stopScanner();
+
       try {
         const payload = JSON.parse(decodedText);
 
         if (payload.type !== "PAYMENT_REQUEST") {
-          setErrorModal({ show: true, message: "Invalid QR code. Please scan a valid SyncPoint payment request." });
+          setErrorModal({
+            show: true,
+            message: "Invalid QR code. Please scan a valid SyncPoint payment request.",
+          });
           return;
         }
+
         if (new Date() > new Date(payload.expiresAt)) {
-          setErrorModal({ show: true, message: "This payment request has expired. Ask the receiver to generate a new one." });
+          setErrorModal({
+            show: true,
+            message: "This payment request has expired. Ask the receiver to generate a new one.",
+          });
           return;
         }
+
         if (!payload.requestRef || !payload.receiverWalletId || !payload.amount) {
-          setErrorModal({ show: true, message: "Invalid payment request — missing required fields." });
+          setErrorModal({
+            show: true,
+            message: "Invalid payment request — missing required fields.",
+          });
           return;
         }
+
         if (payload.receiverWalletId === senderWalletId) {
-          setErrorModal({ show: true, message: "You cannot send money to yourself." });
+          setErrorModal({
+            show: true,
+            message: "You cannot send money to yourself.",
+          });
           return;
         }
+
         if (payload.amount > offlineBalance) {
-          setErrorModal({ show: true, message: `Insufficient balance. You have ₦${offlineBalance.toLocaleString()} but need ₦${payload.amount.toLocaleString()}.` });
+          setErrorModal({
+            show: true,
+            message: `Insufficient balance. You have ₦${offlineBalance.toLocaleString()} but need ₦${payload.amount.toLocaleString()}.`,
+          });
           return;
         }
+
         if (payload.amount < 100) {
           setErrorModal({ show: true, message: "Minimum payment amount is ₦100." });
           return;
         }
+
         if (payload.amount > 1000000) {
           setErrorModal({ show: true, message: "Maximum payment amount is ₦1,000,000." });
           return;
         }
 
-        stopScanner();
         setScannedData(payload);
         setScreen("review");
       } catch (err) {
         console.error("[SendMoney] QR parse error:", err);
-        setErrorModal({ show: true, message: "Could not read QR code. Please try again." });
+        setErrorModal({
+          show: true,
+          message: "Could not read QR code. Please try again.",
+        });
       }
     },
-    [senderWalletId, stopScanner, offlineBalance]
+    [senderWalletId, offlineBalance, stopScanner]
   );
 
   const onScanError = useCallback(() => {}, []);
 
+  // startScanner — identical pattern to ReceivePayment.jsx's startSenderScanner
   const startScanner = useCallback(async () => {
-    if (
-      scannerStatusRef.current === "starting" ||
-      scannerStatusRef.current === "running"
-    ) return;
-    if (scannerStatusRef.current === "stopping") return;
+    const operation = pendingTransitionRef.current
+      .catch(() => {})
+      .then(async () => {
+        if (!isMountedRef.current) return;
+        if (isScannerRunningRef.current) return;
 
-    scannerStatusRef.current = "starting";
-    const myGeneration = ++scanGenerationRef.current;
-
-    if (!isMountedRef.current) {
-      scannerStatusRef.current = "idle";
-      return;
-    }
-
-    // Wait for the DOM element to exist before handing it to html5-qrcode
-    let domReady = false;
-    for (let i = 0; i < 20; i++) {
-      if (document.getElementById("qr-reader")) {
-        domReady = true;
-        break;
-      }
-      await new Promise((r) => setTimeout(r, 100));
-    }
-
-    if (!domReady || myGeneration !== scanGenerationRef.current || !isMountedRef.current) {
-      scannerStatusRef.current = "idle";
-      return;
-    }
-
-    const run = async () => {
-      // Try rear camera first, then front, then any device
-      const constraints = [
-        { facingMode: { ideal: "environment" } },
-        { facingMode: "user" },
-      ];
-
-      for (const constraint of constraints) {
-        if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) return;
-
-        await destroyScanner();
-        const instance = new Html5Qrcode("qr-reader");
-        html5QrCodeRef.current = instance;
+        if (!scannerRef.current) {
+          scannerRef.current = new Html5Qrcode("qr-reader");
+        }
 
         try {
-          await instance.start(
-            constraint,
+          await scannerRef.current.start(
+            { facingMode: "environment" },
             { fps: 10, qrbox: { width: 250, height: 250 } },
             onScanSuccess,
             onScanError
           );
+          if (isMountedRef.current) {
+            isScannerRunningRef.current = true;
+          } else {
+            await scannerRef.current.stop().catch(() => {});
+          }
+        } catch (err) {
+          const isTransitionRace =
+            typeof err?.message === "string" &&
+            err.message.includes("already under transition");
 
-          if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) {
-            await instance.stop().catch(() => {});
-            instance.clear?.();
-            html5QrCodeRef.current = null;
-            scannerStatusRef.current = "idle";
+          if (isTransitionRace) {
+            console.warn(
+              "[SendMoney] Scanner start raced a pending transition:",
+              err.message
+            );
             return;
           }
 
-          scannerStatusRef.current = "running";
-          return; // success
-        } catch {
-          html5QrCodeRef.current = null;
-          try { instance.clear?.(); } catch { /* ignore */ }
+          console.error("[SendMoney] Failed to start scanner:", err);
+
+          if (!isMountedRef.current) return;
+
+          const errName = err?.name || "";
+          const isPermissionError =
+            errName === "NotAllowedError" ||
+            errName === "PermissionDeniedError" ||
+            errName === "NotFoundError" ||
+            errName === "NotReadableError";
+
+          setErrorModal({
+            show: true,
+            message: isPermissionError
+              ? "Unable to access camera. Please check camera permissions."
+              : "Camera failed to start. Please try again.",
+          });
         }
-      }
-
-      // Last resort: explicit device ID
-      try {
-        const cameras = await Html5Qrcode.getCameras();
-        if (cameras && cameras.length > 0) {
-          if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) return;
-
-          await destroyScanner();
-          const instance = new Html5Qrcode("qr-reader");
-          html5QrCodeRef.current = instance;
-
-          await instance.start(
-            cameras[0].id,
-            { fps: 10, qrbox: { width: 250, height: 250 } },
-            onScanSuccess,
-            onScanError
-          );
-
-          if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) {
-            await instance.stop().catch(() => {});
-            instance.clear?.();
-            html5QrCodeRef.current = null;
-            scannerStatusRef.current = "idle";
-            return;
-          }
-
-          scannerStatusRef.current = "running";
-          return;
-        }
-      } catch { /* fall through */ }
-
-      if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) return;
-
-      scannerStatusRef.current = "idle";
-      setErrorModal({
-        show: true,
-        message: "Unable to access camera. Please check that camera permissions are granted and try again.",
       });
-    };
 
-    startPromiseRef.current = run();
-    await startPromiseRef.current;
-    startPromiseRef.current = null;
-  }, [onScanSuccess, onScanError, destroyScanner]);
+    pendingTransitionRef.current = operation;
+    await operation;
+  }, [onScanSuccess, onScanError]);
 
+  // Screen-driven start/stop — identical shape to ReceivePayment.jsx
   useEffect(() => {
-    let active = true;
-
-    const init = async () => {
-      if (screen === "scan" && active && isSessionValid) {
-        await startScanner();
-      } else {
-        await stopScanner();
-      }
-    };
-
-    init();
+    if (screen === "scan" && isSessionValid) {
+      startScanner();
+    } else {
+      stopScanner();
+    }
 
     return () => {
-      active = false;
       stopScanner();
     };
-  }, [screen, startScanner, stopScanner, isSessionValid]);
+  }, [screen, isSessionValid, startScanner, stopScanner]);
 
   function getPageTitle() {
     switch (screen) {
-      case "scan": return "Send Money";
-      case "review": return "Review Payment";
-      case "pin": return "Enter PIN";
+      case "scan":         return "Send Money";
+      case "review":       return "Review Payment";
+      case "pin":          return "Enter PIN";
       case "confirmation": return "Payment Sent";
-      default: return "Send Money";
+      default:             return "Send Money";
     }
   }
 
   function handleBack() {
     switch (screen) {
-      case "scan": navigate("/dashboard"); break;
-      case "review": setScannedData(null); setScreen("scan"); break;
-      case "pin": setPin(""); setScreen("review"); break;
-      case "confirmation": navigate("/dashboard"); break;
+      case "scan":
+        navigate("/dashboard");
+        break;
+      case "review":
+        setScannedData(null);
+        setScreen("scan");
+        break;
+      case "pin":
+        setPin("");
+        setScreen("review");
+        break;
+      case "confirmation":
+        navigate("/dashboard");
+        break;
     }
   }
 
   function handleAccept() {
-    const storedVerifier = localStorage.getItem("pin_verifier");
+    const storedVerifier = sessionStorage.getItem("pin_verifier");
     if (!storedVerifier) {
-      setErrorModal({ show: true, message: "PIN not set up. Please configure your PIN in settings." });
+      setErrorModal({
+        show: true,
+        message: "PIN not set up. Please configure your PIN in settings.",
+      });
       return;
     }
     setScreen("pin");
@@ -318,8 +285,8 @@ function SendMoney() {
   async function handleSubmit(e) {
     e.preventDefault();
 
-    const storedVerifier = localStorage.getItem("pin_verifier");
-    const storedSalt = localStorage.getItem("pin_salt");
+    const storedVerifier = sessionStorage.getItem("pin_verifier");
+    const storedSalt = sessionStorage.getItem("pin_salt");
 
     if (!storedVerifier || !storedSalt) {
       setErrorModal({ show: true, message: "Session expired. Please login again." });
@@ -337,12 +304,16 @@ function SendMoney() {
       const pinBuffer = encoder.encode(pin);
       const salt = Uint8Array.from(atob(storedSalt), (c) => c.charCodeAt(0));
 
-      const baseKey = await crypto.subtle.importKey("raw", pinBuffer, "PBKDF2", false, ["deriveBits"]);
+      const baseKey = await crypto.subtle.importKey(
+        "raw", pinBuffer, "PBKDF2", false, ["deriveBits"]
+      );
+
       const derivedBits = await crypto.subtle.deriveBits(
         { name: "PBKDF2", salt, iterations: 600000, hash: "SHA-256" },
         baseKey,
         256
       );
+
       const inputVerifier = btoa(String.fromCharCode(...new Uint8Array(derivedBits)));
 
       if (inputVerifier !== storedVerifier) {
@@ -350,8 +321,14 @@ function SendMoney() {
         sessionStorage.setItem("pinAttempts", attempts.toString());
 
         if (attempts >= 3) {
-          setErrorModal({ show: true, message: "Too many failed PIN attempts. Please login again." });
-          setTimeout(() => { sessionStorage.clear(); navigate("/login"); }, 2000);
+          setErrorModal({
+            show: true,
+            message: "Too many failed PIN attempts. Please login again.",
+          });
+          setTimeout(() => {
+            sessionStorage.clear();
+            navigate("/login");
+          }, 2000);
           return;
         }
 
@@ -363,7 +340,11 @@ function SendMoney() {
       sessionStorage.removeItem("pinAttempts");
       setIsSubmitting(true);
 
-      const transactionRef = `TXN-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+      const transactionRef = `TXN-${Date.now()}-${Math.random()
+        .toString(36)
+        .substring(2, 8)
+        .toUpperCase()}`;
+
       const createdAt = new Date().toISOString();
 
       const senderTransaction = {
@@ -387,9 +368,12 @@ function SendMoney() {
       await saveTransaction(senderTransaction);
       await updateTransactionStatus(transactionRef, "SUCCESS");
 
+      // Recalculate balance from ledger — no manual arithmetic
       const newBalance = await calculateOfflineBalance();
       setOfflineBalance(newBalance);
-      window.dispatchEvent(new CustomEvent("balance-updated", { detail: { balance: newBalance } }));
+      window.dispatchEvent(
+        new CustomEvent("balance-updated", { detail: { balance: newBalance } })
+      );
 
       const qr2Payload = {
         type: "TRANSFER",
@@ -414,12 +398,22 @@ function SendMoney() {
 
     } catch (err) {
       console.error("[SendMoney] Payment error:", err);
+
+      // Recalculate from ledger on failure — no manual rollback needed
       try {
         const restoredBalance = await calculateOfflineBalance();
         setOfflineBalance(restoredBalance);
-        window.dispatchEvent(new CustomEvent("balance-updated", { detail: { balance: restoredBalance } }));
-      } catch { /* ignore */ }
-      setErrorModal({ show: true, message: err.message || "Payment failed. Please try again." });
+        window.dispatchEvent(
+          new CustomEvent("balance-updated", { detail: { balance: restoredBalance } })
+        );
+      } catch {
+        // leave balance as-is if ledger read fails
+      }
+
+      setErrorModal({
+        show: true,
+        message: err.message || "Payment failed. Please try again.",
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -452,6 +446,7 @@ function SendMoney() {
               show you their QR code. Point your camera at it to scan.
             </p>
           </div>
+
           <div className="scanner-wrapper">
             <div className="scanner-box">
               <div className="scan-corner tl" />
@@ -462,6 +457,7 @@ function SendMoney() {
               <div id="qr-reader" style={{ width: "100%", height: "100%" }} />
             </div>
           </div>
+
           <p className="scan-hint">Only scan QR codes from people you trust</p>
         </div>
       )}
@@ -469,17 +465,22 @@ function SendMoney() {
       {screen === "review" && scannedData && (
         <div className="page-body">
           <div className="receiver-card">
-            <div className="receiver-avatar">{getInitials(scannedData.receiverName)}</div>
+            <div className="receiver-avatar">
+              {getInitials(scannedData.receiverName)}
+            </div>
             <div className="receiver-info">
               <div className="receiver-name">{scannedData.receiverName}</div>
               <div className="receiver-phone">{scannedData.receiverPhone}</div>
             </div>
             <span className="receiver-badge">Verified</span>
           </div>
+
           <div className="review-card">
             <div className="review-row">
               <span className="review-label">Amount requested</span>
-              <span className="review-amount">₦{Number(scannedData.amount).toLocaleString()}</span>
+              <span className="review-amount">
+                ₦{Number(scannedData.amount).toLocaleString()}
+              </span>
             </div>
             <div className="review-divider" />
             {scannedData.description && (
@@ -495,20 +496,36 @@ function SendMoney() {
             <div className="review-divider" />
             <div className="review-row">
               <span className="review-label">Your offline balance</span>
-              <span className="review-value" style={{ color: offlineBalance >= scannedData.amount ? "#0F766E" : "#DC2626" }}>
+              <span
+                className="review-value"
+                style={{
+                  color: offlineBalance >= scannedData.amount ? "#0F766E" : "#DC2626",
+                }}
+              >
                 ₦{offlineBalance.toLocaleString()}
               </span>
             </div>
           </div>
+
           <div className="info-banner">
-            ℹ️ You are about to send <strong>₦{Number(scannedData.amount).toLocaleString()}</strong> to{" "}
+            ℹ️ You are about to send{" "}
+            <strong>₦{Number(scannedData.amount).toLocaleString()}</strong> to{" "}
             <strong>{scannedData.receiverName}</strong>. This cannot be reversed offline.
           </div>
+
           <div className="btn-group">
-            <button className="btn-primary" onClick={handleAccept} disabled={offlineBalance < scannedData.amount}>
-              {offlineBalance < scannedData.amount ? "Insufficient Balance" : "Accept & Continue"}
+            <button
+              className="btn-primary"
+              onClick={handleAccept}
+              disabled={offlineBalance < scannedData.amount}
+            >
+              {offlineBalance < scannedData.amount
+                ? "Insufficient Balance"
+                : "Accept & Continue"}
             </button>
-            <button className="btn-reject" onClick={handleReject}>Reject Payment Request</button>
+            <button className="btn-reject" onClick={handleReject}>
+              Reject Payment Request
+            </button>
           </div>
         </div>
       )}
@@ -520,10 +537,12 @@ function SendMoney() {
               <div className="pin-screen-icon">🔐</div>
               <h2 className="pin-screen-title">Enter your PIN</h2>
               <p className="pin-screen-subtitle">
-                Confirm payment of <strong>₦{scannedData?.amount?.toLocaleString()}</strong> to{" "}
+                Confirm payment of{" "}
+                <strong>₦{scannedData?.amount?.toLocaleString()}</strong> to{" "}
                 <strong>{scannedData?.receiverName}</strong>
               </p>
             </div>
+
             <form onSubmit={handleSubmit} noValidate>
               <div className="form-field">
                 <div className="input-wrapper">
@@ -535,19 +554,43 @@ function SendMoney() {
                     inputMode="numeric"
                     maxLength={4}
                     className={errors.pin ? "has-error" : ""}
-                    style={{ letterSpacing: "0.4em", textAlign: "center", fontSize: 24, height: 56, width: "100%", border: "1px solid #E5E7EB", borderRadius: 8, outline: "none", fontFamily: "inherit" }}
+                    style={{
+                      letterSpacing: "0.4em",
+                      textAlign: "center",
+                      fontSize: 24,
+                      height: 56,
+                      width: "100%",
+                      border: "1px solid #E5E7EB",
+                      borderRadius: 8,
+                      outline: "none",
+                      fontFamily: "inherit",
+                    }}
                     autoFocus
                     disabled={isSubmitting}
                   />
-                  <button type="button" className="password-toggle" onClick={() => setShowPin((p) => !p)} tabIndex={-1} disabled={isSubmitting}>
+                  <button
+                    type="button"
+                    className="password-toggle"
+                    onClick={() => setShowPin((p) => !p)}
+                    tabIndex={-1}
+                    disabled={isSubmitting}
+                  >
                     {showPin ? "Hide" : "Show"}
                   </button>
                 </div>
                 {errors.pin && <p className="field-error">{errors.pin}</p>}
                 <p className="field-hint">Enter your 4-digit PIN to confirm</p>
               </div>
-              <button type="submit" className="btn-primary" disabled={isSubmitting || pin.length < 4} style={{ marginTop: 20 }}>
-                {isSubmitting ? "Processing..." : `Send ₦${scannedData?.amount?.toLocaleString()}`}
+
+              <button
+                type="submit"
+                className="btn-primary"
+                disabled={isSubmitting || pin.length < 4}
+                style={{ marginTop: 20 }}
+              >
+                {isSubmitting
+                  ? "Processing..."
+                  : `Send ₦${scannedData?.amount?.toLocaleString()}`}
               </button>
             </form>
           </div>
@@ -559,42 +602,69 @@ function SendMoney() {
           <div className="confirm-sent-card">
             <div className="confirm-sent-icon">✅</div>
             <div className="confirm-sent-title">Payment Sent!</div>
-            <div className="confirm-sent-amount">₦{Number(scannedData.amount).toLocaleString()}</div>
+            <div className="confirm-sent-amount">
+              ₦{Number(scannedData.amount).toLocaleString()}
+            </div>
             <div className="confirm-sent-to">Sent to</div>
             <div className="confirm-sent-name">{scannedData.receiverName}</div>
+
             <div className="confirm-sent-divider" />
+
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "16px 0" }}>
               <p style={{ fontSize: 12, color: "#6B7280", textAlign: "center", margin: 0 }}>
                 Show this QR to <strong>{scannedData.receiverName}</strong> to confirm receipt
               </p>
               <div style={{ background: "#fff", padding: 12, borderRadius: 8, border: "1px solid #E5E7EB" }}>
-                <QRCodeSVG value={JSON.stringify(transactionPayload)} size={160} bgColor="#FFFFFF" fgColor="#111827" level="M" />
+                <QRCodeSVG
+                  value={JSON.stringify(transactionPayload)}
+                  size={160}
+                  bgColor="#FFFFFF"
+                  fgColor="#111827"
+                  level="M"
+                />
               </div>
               <p style={{ fontSize: 10, color: "#9CA3AF", textAlign: "center", margin: 0 }}>
                 Receiver scans this to credit their wallet
               </p>
             </div>
+
             <div className="confirm-sent-divider" />
+
             <div className="confirm-sent-row">
               <span className="confirm-sent-row-label">Transaction ref</span>
-              <span className="confirm-sent-row-value" style={{ fontFamily: "monospace", fontSize: 10 }}>{scannedData.transactionRef}</span>
+              <span className="confirm-sent-row-value" style={{ fontFamily: "monospace", fontSize: 10 }}>
+                {scannedData.transactionRef}
+              </span>
             </div>
             <div className="confirm-sent-row">
               <span className="confirm-sent-row-label">Request ref</span>
-              <span className="confirm-sent-row-value" style={{ fontFamily: "monospace", fontSize: 10 }}>{scannedData.requestRef}</span>
+              <span className="confirm-sent-row-value" style={{ fontFamily: "monospace", fontSize: 10 }}>
+                {scannedData.requestRef}
+              </span>
             </div>
             <div className="confirm-sent-row">
               <span className="confirm-sent-row-label">Date & time</span>
               <span className="confirm-sent-row-value">
-                {new Date(scannedData.createdAt).toLocaleString("en-NG", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                {new Date(scannedData.createdAt).toLocaleString("en-NG", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
               </span>
             </div>
             <div className="confirm-sent-row">
               <span className="confirm-sent-row-label">Status</span>
-              <span className="confirm-sent-row-value" style={{ color: "#BA7517" }}>Pending sync</span>
+              <span className="confirm-sent-row-value" style={{ color: "#BA7517" }}>
+                Pending sync
+              </span>
             </div>
           </div>
-          <button className="btn-primary" onClick={() => navigate("/dashboard")}>Done — Back to Dashboard</button>
+
+          <button className="btn-primary" onClick={() => navigate("/dashboard")}>
+            Done — Back to Dashboard
+          </button>
         </div>
       )}
 
@@ -604,7 +674,12 @@ function SendMoney() {
             <div className="modal-icon">⚠️</div>
             <h2 className="modal-title">Payment Failed</h2>
             <p className="modal-body">{errorModal.message}</p>
-            <button className="btn-primary" onClick={() => setErrorModal({ show: false, message: "" })}>OK</button>
+            <button
+              className="btn-primary"
+              onClick={() => setErrorModal({ show: false, message: "" })}
+            >
+              OK
+            </button>
           </div>
         </div>
       )}
@@ -613,18 +688,6 @@ function SendMoney() {
 }
 
 export default SendMoney;
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -663,7 +726,6 @@ export default SendMoney;
 //   const isMountedRef = useRef(true);
 //   const scannerStatusRef = useRef("idle");
 //   const scanGenerationRef = useRef(0);
-//   const initLockRef = useRef(false);
 
 //   const senderWalletId = localStorage.getItem("walletId") || sessionStorage.getItem("walletId");
 //   const senderPhone = localStorage.getItem("phoneNumber") || sessionStorage.getItem("phoneNumber");
@@ -688,26 +750,27 @@ export default SendMoney;
 
 //   const destroyScanner = useCallback(async () => {
 //     const instance = html5QrCodeRef.current;
-//     html5QrCodeRef.current = null; // null ref first so nothing else tries to use it
+//     html5QrCodeRef.current = null;
 
 //     if (!instance) return;
 
 //     try {
-//       const state = typeof instance.getState === "function"
-//         ? instance.getState()
-//         : null;
-
-//       // Only stop if actually running (state 2 = SCANNING, 3 = PAUSED)
-//       if (state === 2 || state === 3) {
-//         await instance.stop();
+//       if (typeof instance.getState === "function") {
+//         const state = instance.getState();
+//         if (state === 2 || state === 3) {
+//           await instance.stop();
+//         }
+//       } else {
+//         await instance.stop().catch(() => {});
 //       }
 //     } catch (err) {
-//       // Non-fatal — scanner may already be stopped
 //       console.warn("[SendMoney] destroyScanner stop warning:", err?.message || err);
 //     }
 
 //     try {
-//       instance.clear?.();
+//       if (typeof instance.clear === "function") {
+//         instance.clear();
+//       }
 //     } catch (err) {
 //       console.warn("[SendMoney] destroyScanner clear warning:", err?.message || err);
 //     }
@@ -715,11 +778,8 @@ export default SendMoney;
 
 //   useEffect(() => {
 //     isMountedRef.current = true;
-//     initLockRef.current = false; 
-
 //     return () => {
 //       isMountedRef.current = false;
-//       initLockRef.current = true; 
 //       scanGenerationRef.current += 1;
 //       scannerStatusRef.current = "stopping";
 //       destroyScanner().then(() => {
@@ -815,126 +875,73 @@ export default SendMoney;
 //   const onScanError = useCallback(() => {}, []);
 
 //   const startScanner = useCallback(async () => {
-//     if (initLockRef.current) return;
-//     if (
-//       scannerStatusRef.current === "starting" ||
-//       scannerStatusRef.current === "running"
-//     ) return;
+//     if (scannerStatusRef.current === "starting" || scannerStatusRef.current === "running") return;
 //     if (scannerStatusRef.current === "stopping") return;
 
 //     scannerStatusRef.current = "starting";
 //     const myGeneration = ++scanGenerationRef.current;
 
-//     if (!isMountedRef.current) {
-//       scannerStatusRef.current = "idle";
-//       return;
-//     }
+//     if (!isMountedRef.current) { scannerStatusRef.current = "idle"; return; }
 
-//     // Wait for the DOM element to actually exist before handing it to html5-qrcode.
-//     // On first mount (especially in StrictMode), the effect fires before the
-//     // element is fully painted, causing html5-qrcode to throw a non-Error object.
-//     let domReady = false;
-//     for (let i = 0; i < 10; i++) {
-//       if (document.getElementById("qr-reader")) {
-//         domReady = true;
-//         break;
+//     try {
+//       // Get available cameras first
+//       const cameras = await Html5Qrcode.getCameras();
+//       if (!cameras || cameras.length === 0) {
+//         throw new Error("No camera found on this device.");
 //       }
-//       await new Promise((r) => setTimeout(r, 100));
-//     }
 
-//     if (!domReady) {
-//       scannerStatusRef.current = "idle";
-//       return;
-//     }
-
-//     if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) {
-//       scannerStatusRef.current = "idle";
-//       return;
-//     }
-
-//     const attempts = [
-//       { facingMode: { ideal: "environment" } },
-//       { facingMode: "user" },
-//     ];
-
-//     for (const constraint of attempts) {
 //       if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) {
 //         scannerStatusRef.current = "idle";
 //         return;
 //       }
 
-//       await destroyScanner();
+//       // Prefer rear camera on mobile, fall back to first available
+//       const camera =
+//         cameras.find(c => /back|rear|environment/i.test(c.label)) || cameras[0];
+
 //       const instance = new Html5Qrcode("qr-reader");
 //       html5QrCodeRef.current = instance;
 
-//       try {
-//         await instance.start(
-//           constraint,
-//           { fps: 10, qrbox: { width: 250, height: 250 } },
-//           onScanSuccess,
-//           onScanError
-//         );
+//       await instance.start(
+//         camera.id,  // ← use device ID instead of facingMode
+//         { fps: 10, qrbox: { width: 250, height: 250 } },
+//         onScanSuccess,
+//         onScanError
+//       );
 
-//         if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) {
-//           await instance.stop().catch(() => {});
-//           instance.clear?.();
-//           html5QrCodeRef.current = null;
-//           scannerStatusRef.current = "idle";
-//           return;
-//         }
+//       await new Promise(r => setTimeout(r, 0));
 
-//         scannerStatusRef.current = "running";
-//         return;
-
-//       } catch {
-//         html5QrCodeRef.current = null;
-//         try { instance.clear?.(); } catch { /* ignore */ }
-//       }
-//     }
-
-//     // All attempts failed — try by explicit device ID as last resort
-//     try {
-//       const cameras = await Html5Qrcode.getCameras();
-//       if (cameras && cameras.length > 0) {
-//         if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) {
-//           scannerStatusRef.current = "idle";
-//           return;
-//         }
-
-//         const instance = new Html5Qrcode("qr-reader");
-//         html5QrCodeRef.current = instance;
-
-//         await instance.start(
-//           cameras[0].id,
-//           { fps: 10, qrbox: { width: 250, height: 250 } },
-//           onScanSuccess,
-//           onScanError
-//         );
-
-//         if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) {
-//           await instance.stop().catch(() => {});
-//           instance.clear?.();
-//           html5QrCodeRef.current = null;
-//           scannerStatusRef.current = "idle";
-//           return;
-//         }
-
-//         scannerStatusRef.current = "running";
+//       if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) {
+//         await instance.stop().catch(() => {});
+//         instance.clear?.();
+//         scannerStatusRef.current = "idle";
 //         return;
 //       }
-//     } catch { /* fall through */ }
 
-//     if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) {
+//       scannerStatusRef.current = "running";
+
+//     } catch (err) {
+//       console.error("[SendMoney] RAW start error:", err?.name, err?.message);
+
+//       if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) return;
+
 //       scannerStatusRef.current = "idle";
-//       return;
-//     }
 
-//     scannerStatusRef.current = "idle";
-//     setErrorModal({
-//       show: true,
-//       message: "Unable to access camera. Please check that camera permissions are granted and try again.",
-//     });
-//   }, [onScanSuccess, onScanError, destroyScanner]);
+//       const errName = err?.name || "";
+//       const isPermissionError =
+//         errName === "NotAllowedError" ||
+//         errName === "PermissionDeniedError" ||
+//         errName === "NotFoundError" ||
+//         errName === "NotReadableError";
+
+//       setErrorModal({
+//         show: true,
+//         message: isPermissionError
+//           ? "Unable to access camera. Please check camera permissions."
+//           : err.message || "Camera failed to start. Please try again.",
+//       });
+//     }
+//   }, [onScanSuccess, onScanError]);
 
 //   useEffect(() => {
 //     let active = true;
