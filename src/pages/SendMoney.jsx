@@ -47,27 +47,26 @@ function SendMoney() {
 
   const destroyScanner = useCallback(async () => {
     const instance = html5QrCodeRef.current;
-    html5QrCodeRef.current = null;
+    html5QrCodeRef.current = null; // null ref first so nothing else tries to use it
 
     if (!instance) return;
 
     try {
-      if (typeof instance.getState === "function") {
-        const state = instance.getState();
-        if (state === 2 || state === 3) {
-          await instance.stop();
-        }
-      } else {
-        await instance.stop().catch(() => {});
+      const state = typeof instance.getState === "function"
+        ? instance.getState()
+        : null;
+
+      // Only stop if actually running (state 2 = SCANNING, 3 = PAUSED)
+      if (state === 2 || state === 3) {
+        await instance.stop();
       }
     } catch (err) {
+      // Non-fatal — scanner may already be stopped
       console.warn("[SendMoney] destroyScanner stop warning:", err?.message || err);
     }
 
     try {
-      if (typeof instance.clear === "function") {
-        instance.clear();
-      }
+      instance.clear?.();
     } catch (err) {
       console.warn("[SendMoney] destroyScanner clear warning:", err?.message || err);
     }
@@ -172,45 +171,39 @@ function SendMoney() {
   const onScanError = useCallback(() => {}, []);
 
   const startScanner = useCallback(async () => {
-    if (scannerStatusRef.current === "starting" || scannerStatusRef.current === "running") return;
-    if (scannerStatusRef.current === "stopping") return;
+    if (
+      scannerStatusRef.current === "starting" ||
+      scannerStatusRef.current === "running"
+    ) {
+      return;
+    }
+    if (scannerStatusRef.current === "stopping") {
+      return;
+    }
 
     scannerStatusRef.current = "starting";
     const myGeneration = ++scanGenerationRef.current;
 
-    if (!isMountedRef.current) { scannerStatusRef.current = "idle"; return; }
+    if (!isMountedRef.current) {
+      scannerStatusRef.current = "idle";
+      return;
+    }
 
     try {
-      // Get available cameras first
-      const cameras = await Html5Qrcode.getCameras();
-      if (!cameras || cameras.length === 0) {
-        throw new Error("No camera found on this device.");
-      }
-
-      if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) {
-        scannerStatusRef.current = "idle";
-        return;
-      }
-
-      // Prefer rear camera on mobile, fall back to first available
-      const camera =
-        cameras.find(c => /back|rear|environment/i.test(c.label)) || cameras[0];
-
       const instance = new Html5Qrcode("qr-reader");
       html5QrCodeRef.current = instance;
 
       await instance.start(
-        camera.id,  // ← use device ID instead of facingMode
+        { facingMode: { ideal: "environment" } }, // ← no getCameras(), same as ReceivePayment
         { fps: 10, qrbox: { width: 250, height: 250 } },
         onScanSuccess,
         onScanError
       );
 
-      await new Promise(r => setTimeout(r, 0));
-
       if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) {
         await instance.stop().catch(() => {});
         instance.clear?.();
+        html5QrCodeRef.current = null;
         scannerStatusRef.current = "idle";
         return;
       }
@@ -218,10 +211,13 @@ function SendMoney() {
       scannerStatusRef.current = "running";
 
     } catch (err) {
-      console.error("[SendMoney] RAW start error:", err?.name, err?.message);
+      if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) {
+        scannerStatusRef.current = "idle";
+        return;
+      }
 
-      if (myGeneration !== scanGenerationRef.current || !isMountedRef.current) return;
-
+      console.error("[SendMoney] Failed to start scanner:", err?.name, err?.message);
+      html5QrCodeRef.current = null;
       scannerStatusRef.current = "idle";
 
       const errName = err?.name || "";
