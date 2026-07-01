@@ -1618,14 +1618,19 @@
   line-height: 1.6;
 }
 
+/* Replace the scanner-box and related styles with these */
+
 .scanner-wrapper {
   display: flex;
   justify-content: center;
+  width: 100%;
+  padding: 0 20px;
 }
 
 .scanner-box {
-  width: 260px;
-  height: 260px;
+  width: 100%;
+  max-width: 320px;
+  aspect-ratio: 1/1;
   background: #111827;
   border-radius: 16px;
   position: relative;
@@ -1635,6 +1640,49 @@
   justify-content: center;
 }
 
+/* Make the QR reader fill the entire scanner box */
+#qr-reader,
+#sender-qr-reader {
+  width: 100% !important;
+  height: 100% !important;
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+}
+
+/* Override html5-qrcode internal styles */
+#qr-reader video,
+#sender-qr-reader video,
+#qr-reader img,
+#sender-qr-reader img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+}
+
+#qr-reader > div,
+#sender-qr-reader > div {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* Ensure the scanner region overlay doesn't interfere */
+#qr-reader__scan_region,
+#sender-qr-reader__scan_region {
+  width: 100% !important;
+  height: 100% !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Hide the default scanner border/background that shows through */
+#qr-reader__scan_region > img,
+#sender-qr-reader__scan_region > img {
+  display: none !important;
+}
+
+/* Style the scan corners - these will overlay the camera */
 .scan-corner {
   position: absolute;
   width: 28px;
@@ -1642,31 +1690,37 @@
   border-color: #0F766E;
   border-style: solid;
   border-width: 0;
+  z-index: 5;
+  pointer-events: none;
 }
 
 .scan-corner.tl {
-  top: 14px; left: 14px;
+  top: 14px;
+  left: 14px;
   border-top-width: 3px;
   border-left-width: 3px;
   border-radius: 4px 0 0 0;
 }
 
 .scan-corner.tr {
-  top: 14px; right: 14px;
+  top: 14px;
+  right: 14px;
   border-top-width: 3px;
   border-right-width: 3px;
   border-radius: 0 4px 0 0;
 }
 
 .scan-corner.bl {
-  bottom: 14px; left: 14px;
+  bottom: 14px;
+  left: 14px;
   border-bottom-width: 3px;
   border-left-width: 3px;
   border-radius: 0 0 0 4px;
 }
 
 .scan-corner.br {
-  bottom: 14px; right: 14px;
+  bottom: 14px;
+  right: 14px;
   border-bottom-width: 3px;
   border-right-width: 3px;
   border-radius: 0 0 4px 0;
@@ -1678,6 +1732,8 @@
   height: 2px;
   background: #0F766E;
   box-shadow: 0 0 8px rgba(15, 118, 110, 0.8);
+  z-index: 5;
+  pointer-events: none;
   animation: scanAnim 2s ease-in-out infinite;
 }
 
@@ -1685,6 +1741,13 @@
   0% { top: 20%; }
   50% { top: 80%; }
   100% { top: 20%; }
+}
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+  .scanner-box {
+    max-width: 280px;
+  }
 }
 
 .scanner-inner {
@@ -1950,3 +2013,5 @@
   .confirm-sent-amount { font-size: 28px; }
   .review-amount { font-size: 20px; }
 }
+
+
