@@ -30,13 +30,9 @@ const PERSISTENT_KEYS = [
   "offlineBalance",
   "wrappedDEK",
   "notifications",
-];
-
-// Temporary unlock state — sessionStorage only
-const UNLOCK_KEYS = [
-  "pin_salt",
-  "pin_verifier",
-  "pin_verified_at",
+  "pin_salt",        
+  "pin_verifier",    
+  "pin_verified_at",  
 ];
 
 /**
@@ -45,7 +41,6 @@ const UNLOCK_KEYS = [
  */
 export function clearUnlockedSession() {
   TOKEN_KEYS.forEach((k) => sessionStorage.removeItem(k));
-  UNLOCK_KEYS.forEach((k) => sessionStorage.removeItem(k));
 }
 
 /**
@@ -62,7 +57,6 @@ export function clearTokenSession() {
  */
 export function clearAuthSession() {
   TOKEN_KEYS.forEach((k) => sessionStorage.removeItem(k));
-  UNLOCK_KEYS.forEach((k) => sessionStorage.removeItem(k));
   PERSISTENT_KEYS.forEach((k) => {
     localStorage.removeItem(k);
     sessionStorage.removeItem(k);

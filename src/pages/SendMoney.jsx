@@ -273,7 +273,7 @@ function SendMoney() {
   }
 
   function handleAccept() {
-    const storedVerifier = sessionStorage.getItem("pin_verifier");
+    const storedVerifier = localStorage.getItem("pin_verifier");
     if (!storedVerifier) {
       setErrorModal({
         show: true,
@@ -299,8 +299,8 @@ function SendMoney() {
   async function handleSubmit(e) {
     e.preventDefault();
 
-    const storedVerifier = sessionStorage.getItem("pin_verifier");
-    const storedSalt = sessionStorage.getItem("pin_salt");
+    const storedVerifier = localStorage.getItem("pin_verifier"); 
+    const storedSalt = localStorage.getItem("pin_salt");  
 
     if (!storedVerifier || !storedSalt) {
       setErrorModal({ show: true, message: "Session expired. Please login again." });
