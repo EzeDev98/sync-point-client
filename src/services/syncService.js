@@ -30,35 +30,26 @@ export async function syncPendingTransactions(onProgress) {
     return { total: 0, synced: 0, failed: 0, message: "Nothing to sync." };
   }
 
-  let synced = 0;
-  let failed = 0;
+  const validTransactions = pending.filter(transaction => transaction.status !== "CORRUPTED");
+  const corruptedCount = pending.length - validTransactions.length;
 
-  for (const transaction of pending) {
-    // Fix issue #13: skip CORRUPTED records — they cannot be sent to the
-    // server and would produce a meaningless API error. Leave them for
-    // manual investigation.
-    if (transaction.status === "CORRUPTED") {
-      console.warn(
-        `[SyncService] Skipping corrupted transaction: ${transaction.transactionRef}`
-      );
-      failed++;
-      continue;
-    }
+  if (validTransactions.length === 0) {
+    return {
+      total: pending.length,
+      synced: 0,
+      failed: corruptedCount,
+      message: `${corruptedCount} corrupted transaction(s) skipped`,
+    };
+  }
 
-    try {
-      // Send the full decrypted transaction payload to the server.
-      //
-      // - type:           "TRANSFER" (business classification)
-      // - entryType:      "DEBIT"|"CREDIT" (local ledger perspective,
-      //                   server validates but derives its own entries)
-      // - requestRef:     included so server can reconcile the two devices'
-      //                   records for the same transfer (fix issue #14)
-      await syncTransaction({
+  try {
+
+    const payload = validTransactions.map(transaction => ({
         transactionRef: transaction.transactionRef,
-        requestRef: transaction.requestRef,           // added — needed for reconciliation
-        type: transaction.type,                       // "TRANSFER"
-        entryType: transaction.entryType,             // "DEBIT" | "CREDIT"
-        status: transaction.status,                   // "PENDING" | "SUCCESS"
+        requestRef: transaction.requestRef,          
+        type: transaction.type,                      
+        entryType: transaction.entryType,            
+        status: transaction.status,                  
         amount: transaction.amount,
         currency: transaction.currency || "NGN",
         description: transaction.description,
@@ -69,58 +60,72 @@ export async function syncPendingTransactions(onProgress) {
         receiverPhone: transaction.receiverPhone,
         receiverName: transaction.receiverName,
         createdAt: transaction.createdAt,
-      });
+      }));
 
-      await markTransactionSynced(transaction.transactionRef);
-      synced++;
+      await syncTransactions(payload);
 
+      let synced = 0;
+      for (const transaction of validTransactions) {
+        await markTransactionSynced(transaction.transactionRef);
+        synced++;
+        if (onProgress) {
+          onProgress({
+            current: synced,
+            total: validTransactions.length,
+            synced,
+            failed: 0,
+            lastRef: transaction.transactionRef,
+          });
+        }
+      }
+
+      const walletId = localStorage.getItem("walletId") || sessionStorage.getItem("walletId");
+      if (walletId && getIsOnline()) {
+        try {
+          await fetchUpdatedBalance(walletId);
+          const ledgerBalance = await calculateOfflineBalance();
+          window.dispatchEvent(
+            new CustomEvent("balance-updated", { detail: { balance: ledgerBalance } })
+          );
+        } catch (err) {
+          if (getIsOnline()) {
+            console.error("[SyncService] Balance refresh failed:", err.message);
+          }
+        }
+      }
+
+      return {
+        total: pending.length,
+        synced,
+        failed: corruptedCount,
+        message: `All ${synced} transaction(s) synced successfully.${corruptedCount > 0 ? ` ${corruptedCount} corrupted skipped.` : ""}`,
+      };
+
+  } catch (err) {
+    console.error("[SyncService] Batch sync failed:", err.message);
+
+    let failed = 0;
+    for (const transaction of validTransactions) {
+      await markTransactionFailed(transaction.transactionRef, err.message);
+      failed++;
       if (onProgress) {
         onProgress({
-          current: synced + failed,
-          total: pending.length,
-          synced,
+          current: failed,
+          total: validTransactions.length,
+          synced: 0,
           failed,
           lastRef: transaction.transactionRef,
         });
       }
-    } catch (err) {
-      console.error(
-        `[SyncService] Failed to sync ${transaction.transactionRef}:`,
-        err.message
-      );
-      await markTransactionFailed(transaction.transactionRef, err.message);
-      failed++;
     }
-  }
 
-  // Refresh local balance from server after sync
-  const walletId = localStorage.getItem("walletId") || sessionStorage.getItem("walletId");
-  if (walletId && getIsOnline()) {
-    try {
-      await fetchUpdatedBalance(walletId);
-      // After sync, the server balance is authoritative.
-      // We don't store it directly — instead fire the event so
-      // Dashboard recalculates from the now-synced ledger.
-      const ledgerBalance = await calculateOfflineBalance();
-      window.dispatchEvent(
-        new CustomEvent("balance-updated", { detail: { balance: ledgerBalance } })
-      );
-    } catch (err) {
-      if (getIsOnline()) {
-        console.error("[SyncService] Balance refresh failed:", err.message);
-      }
-    }
+    return {
+      total: pending.length,
+      synced: 0,
+      failed: failed + corruptedCount,
+      message: `Sync failed: ${err.message}`,
+    };
   }
-
-  return {
-    total: pending.length,
-    synced,
-    failed,
-    message:
-      failed === 0
-        ? `All ${synced} transaction(s) synced successfully.`
-        : `${synced} synced, ${failed} failed. Please retry.`,
-  };
 }
 
 export function isOnline() {

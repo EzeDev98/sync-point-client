@@ -187,7 +187,6 @@ export async function markTransactionFailed(transactionRef, errorMessage) {
         return;
       }
 
-      record.status = "FAILED";
       record.syncAttempts = (record.syncAttempts || 0) + 1; // correct increment
       record.lastSyncError = errorMessage || "Sync failed";
 

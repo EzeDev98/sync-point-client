@@ -221,7 +221,14 @@ export async function verifyWalletPin(walletId, pin) {
 // ============================================
 // SYNC OFFLINE TRANSACTIONS 
 // ============================================
-export async function syncTransaction({transactionRef, requestRef, type, entryType, status, amount, currency, description, senderWalletId, senderPhone, senderName, receiverWalletId, receiverPhone, receiverName, createdAt, }) {
+export async function syncTransaction(transactions) {
+
+  if (!Array.isArray(transactions) || transactions.length === 0) {
+      return { 
+        succes: true,
+        message: "No transaction to sync."
+      };
+  }
 
   const token = await getValidToken();
   if (!token) {
@@ -234,7 +241,7 @@ export async function syncTransaction({transactionRef, requestRef, type, entryTy
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({transactionRef, requestRef, type, entryType, status, amount, currency, description, senderWalletId, senderPhone, senderName, receiverWalletId, receiverPhone, receiverName, createdAt,}),
+    body: JSON.stringify(transactions),
   });
   const data = await response.json();
   if (!response.ok) {
