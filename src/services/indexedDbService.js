@@ -352,7 +352,7 @@ export async function getPendingTransactions() {
 
         resolve(
           decrypted.filter(
-            (t) => t.status !== "CORRUPTED" && t.synced === false
+            (t) => t.status !== "CORRUPTED" && t.type === "TRANSFER" && t.synced === false
           )
         );
       } catch (err) {
