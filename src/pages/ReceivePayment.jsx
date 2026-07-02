@@ -458,7 +458,7 @@ function ReceivePayment() {
               ) : (
                 <QRCodeSVG
                   value={qrPayload}
-                  size={320}
+                  size={260}
                   bgColor="#FFFFFF"
                   fgColor="#111827"
                   level="M"
