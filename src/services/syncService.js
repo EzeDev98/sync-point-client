@@ -62,7 +62,7 @@ export async function syncPendingTransactions(onProgress) {
         createdAt: transaction.createdAt,
       }));
 
-      await syncTransactions(payload);
+      await syncTransaction(payload);
 
       let synced = 0;
       for (const transaction of validTransactions) {
