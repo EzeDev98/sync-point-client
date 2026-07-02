@@ -244,25 +244,25 @@ async function decryptRecord(record) {
  * FAILED records. Now queries by status="PENDING" only so failed
  * transactions are not silently retried on every sync cycle.
  */
-export async function getPendingTransactions() {
-  if (!isEncryptionReady()) {
-    throw new Error("[IndexedDB] Encryption not ready. Please log in again.");
-  }
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(STORE_NAME, "readonly");
-    const store = tx.objectStore(STORE_NAME);
-    const index = store.index("synced");
-    const req = index.getAll(false);
-    req.onsuccess = async () => {
-      try {
-        const decrypted = await Promise.all(req.result.map(decryptRecord));
-        resolve(decrypted.filter((t) => t.status !== "CORRUPTED"));
-      } catch (err) { reject(err); }
-    };
-    req.onerror = (event) => reject(event.target.error);
-  });
-}
+// export async function getPendingTransactions() {
+//   if (!isEncryptionReady()) {
+//     throw new Error("[IndexedDB] Encryption not ready. Please log in again.");
+//   }
+//   const db = await openDB();
+//   return new Promise((resolve, reject) => {
+//     const tx = db.transaction(STORE_NAME, "readonly");
+//     const store = tx.objectStore(STORE_NAME);
+//     const index = store.index("synced");
+//     const req = index.getAll(false);
+//     req.onsuccess = async () => {
+//       try {
+//         const decrypted = await Promise.all(req.result.map(decryptRecord));
+//         resolve(decrypted.filter((t) => t.status !== "CORRUPTED"));
+//       } catch (err) { reject(err); }
+//     };
+//     req.onerror = (event) => reject(event.target.error);
+//   });
+// }
 
 /**
  * Get all transactions sorted by createdAt descending.
@@ -331,13 +331,36 @@ export async function getTransactionByRef(transactionRef) {
  * which decrypted every record just to count them.
  */
 export async function getPendingCount() {
+  const pending = await getPendingTransactions();
+  return pending.length;
+}
+
+export async function getPendingTransactions() {
+  if (!isEncryptionReady()) {
+    throw new Error("[IndexedDB] Encryption not ready. Please log in again.");
+  }
+
   const db = await openDB();
+
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, "readonly");
     const store = tx.objectStore(STORE_NAME);
-    const index = store.index("synced");
-    const req = index.count(false);
-    req.onsuccess = () => resolve(req.result);
+    const req = store.getAll();
+
+    req.onsuccess = async () => {
+      try {
+        const decrypted = await Promise.all(req.result.map(decryptRecord));
+
+        resolve(
+          decrypted.filter(
+            (t) => t.status !== "CORRUPTED" && t.synced === false
+          )
+        );
+      } catch (err) {
+        reject(err);
+      }
+    };
+
     req.onerror = (event) => reject(event.target.error);
   });
 }
