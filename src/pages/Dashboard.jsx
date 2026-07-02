@@ -123,8 +123,8 @@ function Dashboard() {
         if (cancelled) return;
         console.error("[Dashboard] Failed to load data:", err);
         if (err.message === "SESSION_EXPIRED") {
-          setLoadError("Your session has expired. Please log in again.");
-          setTimeout(() => navigate("/login", { replace: true }), 1500);
+          setLoadError("Please re-enter your PIN to unlock your wallet.");
+          setTimeout(() => navigate("/verifypin", { replace: true }), 800);
         } else {
           setLoadError("Could not load your transactions.");
         }

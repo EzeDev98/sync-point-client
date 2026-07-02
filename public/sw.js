@@ -29,9 +29,12 @@ const API_ENDPOINTS = [
 // The original origin check silently let ALL API requests bypass the SW
 // entirely, meaning the offline fallback for failed API calls never fired.
 // Set this to your actual API origin, or read it from a build-time env var.
-const API_ORIGIN = self.location.hostname === 'localhost'
-  ? 'http://localhost:2000'
-  : self.location.origin;
+// sw.js
+const isCrossOriginApi = API_ORIGIN !== self.location.origin && url.origin === API_ORIGIN;
+if (url.pathname.startsWith('/api/v1/') || isCrossOriginApi) {
+  event.respondWith(handleApiRequest(request));
+  return;
+}
 
 // ============================================
 // INSTALL EVENT
@@ -47,7 +50,11 @@ self.addEventListener('install', (event) => {
       // message, which the app sends after prompting the user to refresh.
 
       const cache = await caches.open(CACHE_NAME);
-      await cache.addAll(STATIC_ASSETS);
+      await Promise.all(
+        STATIC_ASSETS.map((url) =>
+          cache.add(url).catch((err) => console.warn('[SW] Failed to precache', url, err))
+        )
+      );
 
       // Open (but don't pre-populate) the API cache so it exists for later use
       await caches.open(API_CACHE_NAME);

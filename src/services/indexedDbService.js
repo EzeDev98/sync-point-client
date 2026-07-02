@@ -248,24 +248,18 @@ export async function getPendingTransactions() {
   if (!isEncryptionReady()) {
     throw new Error("[IndexedDB] Encryption not ready. Please log in again.");
   }
-
   const db = await openDB();
-
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, "readonly");
     const store = tx.objectStore(STORE_NAME);
-    const index = store.index("status");
-    const req = index.getAll("PENDING");
-
+    const index = store.index("synced");
+    const req = index.getAll(false);
     req.onsuccess = async () => {
       try {
         const decrypted = await Promise.all(req.result.map(decryptRecord));
         resolve(decrypted.filter((t) => t.status !== "CORRUPTED"));
-      } catch (err) {
-        reject(err);
-      }
+      } catch (err) { reject(err); }
     };
-
     req.onerror = (event) => reject(event.target.error);
   });
 }
@@ -338,13 +332,11 @@ export async function getTransactionByRef(transactionRef) {
  */
 export async function getPendingCount() {
   const db = await openDB();
-
   return new Promise((resolve, reject) => {
     const tx = db.transaction(STORE_NAME, "readonly");
     const store = tx.objectStore(STORE_NAME);
-    const index = store.index("status");
-    const req = index.count("PENDING");
-
+    const index = store.index("synced");
+    const req = index.count(false);
     req.onsuccess = () => resolve(req.result);
     req.onerror = (event) => reject(event.target.error);
   });
