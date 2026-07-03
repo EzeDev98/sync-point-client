@@ -82,15 +82,12 @@ export async function syncPendingTransactions(onProgress) {
       const walletId = localStorage.getItem("walletId") || sessionStorage.getItem("walletId");
       if (walletId && getIsOnline()) {
         try {
-          await fetchUpdatedBalance(walletId);
           const ledgerBalance = await calculateOfflineBalance();
           window.dispatchEvent(
             new CustomEvent("balance-updated", { detail: { balance: ledgerBalance } })
           );
         } catch (err) {
-          if (getIsOnline()) {
-            console.error("[SyncService] Balance refresh failed:", err.message);
-          }
+          console.error("[SyncService] Balance refresh failed:", err.message);
         }
       }
 

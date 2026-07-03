@@ -163,6 +163,7 @@ export async function fundOfflineWallet({ amount, description, transactionPin, r
 // TRANSFER TO ONLINE
 // ============================================
 export async function transferToOnline({ amount, description, transactionPin, requestRef }) {
+
   const phoneNumber = getPhoneNumber();
   if (!phoneNumber) {
     throw new Error("Phone number not found. Please log in again.");
@@ -248,28 +249,6 @@ export async function syncTransaction(transactions) {
     throw new Error(
       data.detail || data.message || "Sync failed for transaction: " + transactionRef
     );
-  }
-  return data;
-}
-
-// ============================================
-// FETCH UPDATED BALANCE
-// ============================================
-export async function fetchUpdatedBalance(walletId) {
-  const token = await getValidToken();
-  if (!token) {
-    throw new Error("No authentication token found. Please log in again.");
-  }
-
-  const response = await fetch(`${BASE_URL}/wallet/balance?walletId=${walletId}`, {
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  const data = await response.json();
-  if (!response.ok) {
-    throw new Error(data.detail || data.message || "Failed to fetch balance.");
   }
   return data;
 }
