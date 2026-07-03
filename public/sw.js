@@ -100,6 +100,25 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
+  // version.json is intentionally cache-busted by versionService.js on
+  // every check (?t=${Date.now()}, cache: "no-store") specifically so it
+  // always reflects the latest deploy. Routing it through the static-asset
+  // cache-first handler would still work correctly (unique query string
+  // per request means no false cache hits) but would silently accumulate
+  // one new cache entry per version check, forever. Bypass the SW cache
+  // for this one path entirely — always go straight to network.
+  if (url.pathname === '/version.json') {
+    event.respondWith(
+      fetch(request).catch(() =>
+        new Response(JSON.stringify({ error: 'offline' }), {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' },
+        })
+      )
+    );
+    return;
+  }
+
   const isCrossOriginApi = API_ORIGIN !== self.location.origin && url.origin === API_ORIGIN;
   if (url.pathname.startsWith('/api/v1/') || isCrossOriginApi) {
     event.respondWith(handleApiRequest(request));
@@ -288,7 +307,7 @@ async function updateApiCache(request) {
 function isStaticAsset(pathname) {
   const staticExtensions = [
     '.js', '.css', '.png', '.jpg', '.jpeg', '.svg', '.gif',
-    '.ico', '.woff', '.woff2', '.ttf', '.eot',
+    '.ico', '.woff', '.woff2', '.ttf', '.eot', '.json',
   ];
   return staticExtensions.some((ext) => pathname.endsWith(ext));
 }
