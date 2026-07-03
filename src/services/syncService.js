@@ -10,7 +10,7 @@ import {
   markTransactionFailed,
   getPendingCount,
 } from "./indexedDbService";
-import { syncTransaction, fetchUpdatedBalance } from "./api";
+import { syncTransaction } from "./api";
 import { calculateOfflineBalance } from "./walletLedger";
 import { getIsOnline } from "./networkService";
 
