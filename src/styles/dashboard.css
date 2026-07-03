@@ -2,6 +2,20 @@
    DASHBOARD — SyncPoint
    ============================================ */
 
+button {
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+button:focus,
+button:focus-visible,
+button:active {
+  outline: none;
+  box-shadow: none;
+}
+
 .sp-app {
   background: #FFFFFF;
   min-height: 100vh;
@@ -182,14 +196,15 @@
 .sync-badge {
   display: inline-flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: center;
   gap: 5px;
   background: #E1F5EE;
   color: #085041;
-  font-size: 11px;
+  font-size: 10.5px;
   font-weight: 500;
-  padding: 3px 9px;
-  border-radius: 20px;
+  padding: 4px 10px;
+  border-radius: 5px;
+  white-space: nowrap;
   align-self: flex-end;
 }
 

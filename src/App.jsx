@@ -28,7 +28,7 @@ function App() {
 
   useEffect(() => {
     function handleSessionExpired() {
-      clearAuthSession();
+      clearTokenSession();
       sessionStorage.setItem(
         "sessionExpiredMessage",
         "Your session has expired. Please sign in again."

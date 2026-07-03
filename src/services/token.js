@@ -50,26 +50,29 @@ async function doRefresh() {
 
 export async function getValidToken() {
   if (isAccessTokenExpiredOrClose()) {
+
+    if (!getIsOnline()) {
+      return sessionStorage.getItem("sessionToken");
+    }
+
     if (isRefreshTokenExpired()) {
       clearTokenSession();
       window.dispatchEvent(new CustomEvent("session-expired"));
       throw new Error("SESSION_EXPIRED");
     }
 
-    if (!getIsOnline()) {
-      return sessionStorage.getItem("sessionToken");
-    }
-
     try {
       return await doRefresh();
     } catch (err) {
-
-      if (getIsOnline()) {
-        console.error("[token] Refresh failed:", err);
+      if (err.message === "REFRESH_INVALID" && getIsOnline()) {
+        console.error("[token] Refresh token invalid:", err);
         clearTokenSession();
         window.dispatchEvent(new CustomEvent("session-expired"));
+        throw new Error("SESSION_EXPIRED");
       }
-      throw new Error("SESSION_EXPIRED", err);
+      
+      console.warn("[token] Refresh failed transiently, will retry:", err.message);
+      return sessionStorage.getItem("sessionToken");
     }
   }
   return sessionStorage.getItem("sessionToken");

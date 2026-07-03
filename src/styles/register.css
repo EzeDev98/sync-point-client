@@ -6,6 +6,20 @@
   box-sizing: border-box;
 }
 
+button {
+  outline: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+button:focus,
+button:focus-visible,
+button:active {
+  outline: none;
+  box-shadow: none;
+}
+
 :root {
   --color-bg: #FFFFFF;
   --color-surface: #F8FAFA;

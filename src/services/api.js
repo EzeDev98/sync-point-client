@@ -254,7 +254,6 @@ export async function syncTransaction(transactions) {
 }
 
 export async function refreshToken() {
-
   const storedRefreshToken = localStorage.getItem("refreshToken");
   if (!storedRefreshToken) {
     throw new Error("NO_REFRESH_TOKEN");
@@ -266,9 +265,12 @@ export async function refreshToken() {
     body: JSON.stringify({ refreshToken: storedRefreshToken }),
   });
 
-  if (!response.ok) throw new Error("REFRESH_FAILED");
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      throw new Error("REFRESH_INVALID");
+    }
+    throw new Error("REFRESH_TRANSIENT");
+  }
 
-  const data = await response.json();
-
-  return data;
+  return response.json();
 }
