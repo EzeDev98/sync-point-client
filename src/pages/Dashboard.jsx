@@ -402,16 +402,35 @@ function Dashboard() {
 
             <div className="balance-right">
               <span className="balance-sub">Wallet · Last updated just now</span>
-              <div className={`sync-badge ${isSyncing ? "pending" : ""}`}>
-                <span className={`sync-dot ${isSyncing ? "pending" : ""}`} />
-                <span>
-                  {isSyncing
-                    ? "Syncing…"
-                    : pendingCount > 0
-                    ? `${pendingCount} pending sync`
-                    : "All transactions synced"}
-                </span>
-              </div>
+                <div
+                    className={`sync-badge ${
+                        syncResult?.failed > 0
+                            ? "error"
+                            : isSyncing
+                            ? "pending"
+                            : ""
+                    }`}
+                >
+                    <span
+                        className={`sync-dot ${
+                            syncResult?.failed > 0
+                                ? "error"
+                                : isSyncing
+                                ? "pending"
+                                : ""
+                        }`}
+                    />
+
+                    <span>
+                        {syncResult?.failed > 0
+                            ? "Sync failed"
+                            : isSyncing
+                            ? "Syncing transactions..."
+                            : pendingCount > 0
+                            ? `${pendingCount} transaction${pendingCount > 1 ? "s" : ""} waiting`
+                            : "All transactions synced"}
+                    </span>
+                </div>
             </div>
           </div>
         </div>

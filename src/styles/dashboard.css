@@ -139,10 +139,10 @@ button:active {
 }
 
 .balance-inner {
-  display: flex;
-  align-items: stretch;
-  justify-content: space-between;
-  gap: 16px;
+    display: grid;
+    grid-template-columns: 1fr 1px 1fr;
+    align-items: center;
+    gap: 18px;
 }
 
 .balance-left { display: flex; flex-direction: column; gap: 6px; }
@@ -178,47 +178,64 @@ button:active {
 
 .balance-divider {
   width: 1px;
+  height: 100%;
   background: #E5E7EB;
   align-self: stretch;
   flex-shrink: 0;
 }
 
 .balance-right {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 6px;
-  text-align: right;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 12px;
+    flex: 1;
+    min-width: 0;
 }
-
-.balance-sub { font-size: 11px; color: #9CA3AF; line-height: 1.4; }
 
 .sync-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  background: #E1F5EE;
-  color: #085041;
-  font-size: 10.5px;
-  font-weight: 500;
-  padding: 4px 10px;
-  border-radius: 5px;
-  white-space: nowrap;
-  align-self: flex-end;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+
+    padding: 8px 14px;
+    border-radius: 5px;
+
+    background: #E8F7EF;
+    color: #0F766E;
+
+    font-size: 12px;
+    font-weight: 600;
+
+    width: fit-content;
 }
 
-.sync-badge.pending { background: #FAEEDA; color: #633806; }
+.sync-badge.pending {
+    background: #FFF4D8;
+    color: #B45309;
+}
+
+.sync-badge.error {
+    background: #FEE2E2;
+    color: #B91C1C;
+}
 
 .sync-dot {
-  width: 5px;
-  height: 5px;
-  background: #0F766E;
-  border-radius: 50%;
-  flex-shrink: 0;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #16A34A;
+    flex-shrink: 0;
 }
 
-.sync-dot.pending { background: #BA7517; }
+.sync-dot.pending {
+    background: #D97706;
+}
+
+.sync-dot.error {
+    background: #DC2626;
+}
 
 .sync-result-container {
   min-height: 36px; /* reserve space */
@@ -241,6 +258,33 @@ button:active {
 .sync-result-message.error {
   color: #DC2626;
   background: #FEE2E2;
+}
+
+.wallet-title {
+    font-size: 12px;
+    font-weight: 600;
+    color: #111827;
+    letter-spacing: 0.2px;
+}
+
+.last-updated {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.updated-label {
+    font-size: 10px;
+    color: #9CA3AF;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.updated-time {
+    font-size: 12px;
+    color: #374151;
+    font-weight: 500;
 }
 
 /* ACTIONS */
@@ -556,12 +600,11 @@ button:active {
   }
 
   .balance-right {
-    text-align: right;
-    align-items: flex-end;
+      align-items: flex-start;
   }
 
   .sync-badge {
-    align-self: flex-end;
+      align-self: flex-start;
   }
 }
 
