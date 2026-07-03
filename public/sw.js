@@ -7,7 +7,6 @@ const CACHE_NAME = `syncpoint-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline.html';
 const SHELL_URL = '/index.html';
 
-
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -24,17 +23,12 @@ const API_ENDPOINTS = [
   '/api/v1/wallet/has-pin',
 ];
 
-// Fix issue #4: the API server runs on a different origin/port than the
-// client dev server (e.g. http://localhost:2000 vs http://localhost:3030).
-// The original origin check silently let ALL API requests bypass the SW
-// entirely, meaning the offline fallback for failed API calls never fired.
-// Set this to your actual API origin, or read it from a build-time env var.
-// sw.js
-const isCrossOriginApi = API_ORIGIN !== self.location.origin && url.origin === API_ORIGIN;
-if (url.pathname.startsWith('/api/v1/') || isCrossOriginApi) {
-  event.respondWith(handleApiRequest(request));
-  return;
-}
+// The API server can run on a different origin/port than the client dev
+// server (e.g. http://localhost:2000 vs http://localhost:3030). In
+// production it's the same origin as the app itself.
+const API_ORIGIN = self.location.hostname === 'localhost'
+  ? 'http://localhost:2000'
+  : self.location.origin;
 
 // ============================================
 // INSTALL EVENT
@@ -42,14 +36,16 @@ if (url.pathname.startsWith('/api/v1/') || isCrossOriginApi) {
 self.addEventListener('install', (event) => {
   event.waitUntil(
     (async () => {
-      // Fix issue #1 (and #8): skipWaiting() removed from install.
-      // Calling it here forces every new SW version to activate immediately,
-      // even while a user is mid-transaction — the old SW could still be
-      // handling an in-flight fetch when the new one takes over caches.
-      // skipWaiting() is now ONLY triggered by the explicit SKIP_WAITING
-      // message, which the app sends after prompting the user to refresh.
+      // skipWaiting() is intentionally NOT called here. Calling it on
+      // install would force every new SW version to activate immediately,
+      // even mid-transaction. skipWaiting() only runs on the explicit
+      // SKIP_WAITING message, sent after the user accepts an update prompt.
 
       const cache = await caches.open(CACHE_NAME);
+
+      // Cache each asset independently — cache.addAll() is atomic and would
+      // abort precaching entirely if even one URL 404s. This way a single
+      // missing asset doesn't take down the whole precache.
       await Promise.all(
         STATIC_ASSETS.map((url) =>
           cache.add(url).catch((err) => console.warn('[SW] Failed to precache', url, err))
@@ -94,10 +90,16 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Fix issue #4: handle API requests regardless of origin, since the API
-  // server may run on a different port/host than the client during dev
-  // (and potentially in production behind a different subdomain).
-  if (url.pathname.startsWith('/api/v1/') || url.origin === API_ORIGIN) {
+  // API requests: match by path prefix (works regardless of origin), or by
+  // exact cross-origin API host in dev. Same-origin static assets and
+  // navigations must NOT be caught here — that was the bug: in production
+  // API_ORIGIN === self.location.origin, so a plain `url.origin === API_ORIGIN`
+  // check would swallow every same-origin request (JS, CSS, images, the
+  // logo, and every route navigation), sending them all into
+  // handleApiRequest() and never letting them reach the static-asset or
+  // navigation handlers below.
+  const isCrossOriginApi = API_ORIGIN !== self.location.origin && url.origin === API_ORIGIN;
+  if (url.pathname.startsWith('/api/v1/') || isCrossOriginApi) {
     event.respondWith(handleApiRequest(request));
     return;
   }
@@ -117,9 +119,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Fix issue #3: networkFirstStrategy can throw on cache-miss-after-network-
-  // failure. The original handler let that exception propagate uncaught to
-  // the browser. Now wrapped so the SW always returns SOME response.
   event.respondWith(
     networkFirstStrategy(request).catch(() =>
       new Response('Network error', {
@@ -196,25 +195,14 @@ async function handleNavigation(request) {
       return response;
     }
 
-    // Fix issue #2: previously, a non-ok network response (404, 500, etc.)
-    // fell through without returning anything — the async function returned
-    // `undefined`, which the browser treats as a network error rather than
-    // showing the actual response or a sensible fallback.
     return response;
   } catch (error) {
-    // Network failed entirely — fall back to cache
     console.warn('[SW] Navigation fetch failed, falling back to cache:', error);
 
-    // Fix issue #7: for a SPA, navigation to routes like /dashboard or /send
-    // will never have an exact cache entry (only / and /index.html were
-    // cached at install). The original code went straight to OFFLINE_URL for
-    // any cache miss, meaning a logged-in user who lost connectivity while
-    // navigating within the app would see "you are offline" instead of the
-    // app shell, which is capable of rendering the route client-side.
-    //
-    // New fallback order:
+    // Fallback order for a SPA:
     //   1. Exact match for this URL (rare, but cheap to check)
-    //   2. The cached SPA shell (index.html) — lets client-side routing work
+    //   2. The cached SPA shell (index.html) — lets client-side routing work,
+    //      so /dashboard, /send, /receive etc. render normally offline
     //   3. offline.html — only if even the shell isn't cached
     //   4. Inline minimal HTML — absolute last resort
     const cache = await caches.open(CACHE_NAME);
@@ -273,11 +261,6 @@ async function apiCacheFirstStrategy(request) {
   const cachedResponse = await cache.match(request);
 
   if (cachedResponse) {
-    // Fix issue #5: updateApiCache is a fire-and-forget background fetch.
-    // It cannot be passed to event.waitUntil from here since we don't have
-    // a reference to the originating event. This is accepted as best-effort:
-    // if the SW is terminated mid-update the next request will just hit
-    // network-first again. Documented rather than silently wrong.
     updateApiCache(request);
     return cachedResponse;
   }
@@ -359,16 +342,6 @@ async function handleBackgroundSync() {
 self.addEventListener('push', (event) => {
   event.waitUntil(
     (async () => {
-      // Fix issue #10: event.data.json() throws synchronously if the push
-      // payload isn't valid JSON. Inside waitUntil, an uncaught throw is
-      // swallowed silently — no notification is shown and nothing is logged
-      // in a way the developer would notice. Wrapped in try/catch with a
-      // text() fallback so malformed payloads still produce a notification.
-      //
-      // `data` is declared without an initializer — every branch below
-      // (JSON success, text fallback, and the unreadable-payload case)
-      // assigns it exactly once before it's read. An initial `= {}` here
-      // would be a dead value, since no path reads `data` before reassigning.
       let data;
       try {
         data = event.data ? event.data.json() : {};
@@ -438,8 +411,6 @@ self.addEventListener('message', (event) => {
 
   switch (type) {
     case 'SKIP_WAITING':
-      // The only place skipWaiting() is called — triggered explicitly by
-      // the app after the user agrees to update (see fix issue #1).
       self.skipWaiting();
       break;
 
@@ -464,13 +435,6 @@ self.addEventListener('message', (event) => {
   }
 });
 
-/**
- * Fix issue #9: the original CLEAR_CACHE handler wiped every cache,
- * including CACHE_NAME (the app shell). For an offline-first payment app,
- * losing the shell cache means the next offline navigation has nothing to
- * fall back to. CLEAR_CACHE now only clears the API response cache.
- * CLEAR_ALL_CACHE is a new, separate, explicit command for a full wipe.
- */
 async function clearApiCache() {
   await caches.delete(API_CACHE_NAME);
   await caches.open(API_CACHE_NAME); // recreate empty
@@ -494,12 +458,6 @@ async function getCacheSize() {
     for (const request of keys) {
       const response = await cache.match(request);
       if (response) {
-        // Fix issue #6: response.blob() consumes the response body. Since
-        // this response comes directly from cache.match(), calling blob()
-        // on it destructively reads the cached entry — the NEXT time this
-        // same cache entry is matched and its body read, it will be empty
-        // (already consumed). clone() first so the original cached Response
-        // remains intact for actual future use.
         const blob = await response.clone().blob();
         totalSize += blob.size;
       }
