@@ -32,15 +32,44 @@ function versionManifestPlugin() {
         console.warn("[version-manifest] Could not read dist/assets:", err);
       }
 
+      if (assetUrls.length === 0) {
+        console.warn(
+          "[version-manifest] No JS/CSS assets found in dist/assets — precache list will be empty."
+        );
+      }
+
       // 3. Stamp BUILD_ID and inject the precache asset list into sw.js
       const swPath = "dist/sw.js";
       let swSource = readFileSync(swPath, "utf-8");
       swSource = swSource.replace("__SW_BUILD_ID__", BUILD_ID);
-      swSource = swSource.replace(
+
+      // IMPORTANT: the placeholder "__PRECACHE_ASSETS__" appears TWICE in
+      // sw.js — once inside the explanatory comment above HASHED_ASSETS,
+      // and once in the actual `const HASHED_ASSETS = "__PRECACHE_ASSETS__";`
+      // line. A plain .replace() only swaps the FIRST occurrence (the
+      // comment), leaving the real code line untouched — which is exactly
+      // why HASHED_ASSETS was staying a literal string at runtime and
+      // nothing beyond the 7 hardcoded STATIC_ASSETS ever got precached.
+      // replaceAll() fixes this by swapping every occurrence.
+      const placeholderRegex = /"__PRECACHE_ASSETS__"/g;
+      const matchCount = (swSource.match(placeholderRegex) || []).length;
+
+      if (matchCount === 0) {
+        throw new Error(
+          "[version-manifest] __PRECACHE_ASSETS__ placeholder not found in dist/sw.js — nothing was injected. Check that public/sw.js still contains the placeholder and hasn't been overwritten before this plugin runs."
+        );
+      }
+
+      swSource = swSource.replaceAll(
         '"__PRECACHE_ASSETS__"',
         JSON.stringify(assetUrls)
       );
+
       writeFileSync(swPath, swSource);
+
+      console.log(
+        `[version-manifest] Injected ${assetUrls.length} precache asset(s) into ${matchCount} placeholder occurrence(s) in dist/sw.js.`
+      );
     },
   };
 }

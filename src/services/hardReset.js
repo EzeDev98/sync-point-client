@@ -70,6 +70,10 @@ function clearWebStorage() {
  * so nothing after performHardReset() will run.
  */
 export async function performHardReset() {
+  if (!navigator.onLine) {
+    throw new Error("OFFLINE");
+  }
+
   console.log("[HardReset] Starting full reset...");
 
   // Order matters: unregister SW first so no in-flight fetch handler

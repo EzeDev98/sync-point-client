@@ -7,13 +7,13 @@ const CACHE_NAME = `syncpoint-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline.html';
 const SHELL_URL = '/index.html';
 
-// "__PRECACHE_ASSETS__" is a string placeholder replaced at build time
+// The token below (assigned to HASHED_ASSETS) is replaced at build time
 // (see vite.config.js -> versionManifestPlugin) with the real, current
 // list of hashed JS/CSS filenames Vite just produced, e.g.
 // ["/assets/index-Dm9nNHOt.js","/assets/index-CzZhqdT-.css"].
-// This is what guarantees the exact bundle this build shipped gets
-// precached at install time, instead of depending on a page load
-// happening to pass through the SW before it's cached.
+// This guarantees the exact bundle this build shipped gets precached
+// at install time, instead of depending on a page load happening to
+// pass through the SW before it's cached.
 const HASHED_ASSETS = "__PRECACHE_ASSETS__";
 
 const STATIC_ASSETS = [
