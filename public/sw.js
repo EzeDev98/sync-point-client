@@ -7,6 +7,15 @@ const CACHE_NAME = `syncpoint-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline.html';
 const SHELL_URL = '/index.html';
 
+// "__PRECACHE_ASSETS__" is a string placeholder replaced at build time
+// (see vite.config.js -> versionManifestPlugin) with the real, current
+// list of hashed JS/CSS filenames Vite just produced, e.g.
+// ["/assets/index-Dm9nNHOt.js","/assets/index-CzZhqdT-.css"].
+// This is what guarantees the exact bundle this build shipped gets
+// precached at install time, instead of depending on a page load
+// happening to pass through the SW before it's cached.
+const HASHED_ASSETS = "__PRECACHE_ASSETS__";
+
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -15,6 +24,7 @@ const STATIC_ASSETS = [
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
   '/icons/favicon.ico',
+  ...(Array.isArray(HASHED_ASSETS) ? HASHED_ASSETS : []),
 ];
 
 const API_CACHE_NAME = `syncpoint-api-${CACHE_VERSION}`;
@@ -55,7 +65,7 @@ self.addEventListener('install', (event) => {
       // Open (but don't pre-populate) the API cache so it exists for later use
       await caches.open(API_CACHE_NAME);
 
-      console.log('[SW] Install completed');
+      console.log('[SW] Install completed. Precached', STATIC_ASSETS.length, 'assets.');
     })()
   );
 });
@@ -90,21 +100,12 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // API requests: match by path prefix (works regardless of origin), or by
-  // exact cross-origin API host in dev. Same-origin static assets and
-  // navigations must NOT be caught here — that was the bug: in production
-  // API_ORIGIN === self.location.origin, so a plain `url.origin === API_ORIGIN`
-  // check would swallow every same-origin request (JS, CSS, images, the
-  // logo, and every route navigation), sending them all into
-  // handleApiRequest() and never letting them reach the static-asset or
-  // navigation handlers below.
   const isCrossOriginApi = API_ORIGIN !== self.location.origin && url.origin === API_ORIGIN;
   if (url.pathname.startsWith('/api/v1/') || isCrossOriginApi) {
     event.respondWith(handleApiRequest(request));
     return;
   }
 
-  // Everything else: only handle same-origin requests
   if (url.origin !== self.location.origin) {
     return;
   }
@@ -142,8 +143,6 @@ async function handleApiRequest(request) {
     return networkFirstStrategy(request).catch(() => offlineApiResponse());
   }
 
-  // Non-GET (POST/PUT/DELETE) — try network, return a structured offline
-  // error if it fails. Never throw uncaught from a fetch handler.
   try {
     return await fetch(request);
   } catch (error) {
@@ -199,12 +198,6 @@ async function handleNavigation(request) {
   } catch (error) {
     console.warn('[SW] Navigation fetch failed, falling back to cache:', error);
 
-    // Fallback order for a SPA:
-    //   1. Exact match for this URL (rare, but cheap to check)
-    //   2. The cached SPA shell (index.html) — lets client-side routing work,
-    //      so /dashboard, /send, /receive etc. render normally offline
-    //   3. offline.html — only if even the shell isn't cached
-    //   4. Inline minimal HTML — absolute last resort
     const cache = await caches.open(CACHE_NAME);
 
     const exactMatch = await cache.match(request);
@@ -252,7 +245,7 @@ async function networkFirstStrategy(request) {
     if (cachedResponse) {
       return cachedResponse;
     }
-    throw error; // caller is responsible for catching (see fetch handler)
+    throw error;
   }
 }
 
@@ -323,10 +316,6 @@ async function handleBackgroundSync() {
     allClients.forEach((client) => {
       client.postMessage({ type: 'SYNC_STARTED' });
     });
-
-    // Actual sync logic lives in the app's syncService — the SW only
-    // notifies; it does not perform the encrypted sync itself since it
-    // has no access to the in-memory DEK.
 
     allClients.forEach((client) => {
       client.postMessage({ type: 'SYNC_COMPLETED' });
@@ -437,7 +426,7 @@ self.addEventListener('message', (event) => {
 
 async function clearApiCache() {
   await caches.delete(API_CACHE_NAME);
-  await caches.open(API_CACHE_NAME); // recreate empty
+  await caches.open(API_CACHE_NAME);
   console.log('[SW] API cache cleared');
 }
 
