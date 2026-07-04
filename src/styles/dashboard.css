@@ -194,21 +194,36 @@ button:active {
     min-width: 0;
 }
 
+.balance-sub {
+    font-size: 11px;
+    color: #9CA3AF;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
 .sync-badge {
-    display: inline-flex;
+    display: flex;
     align-items: center;
     gap: 8px;
 
-    padding: 8px 14px;
-    border-radius: 5px;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+
+    padding: 8px 12px;
+
+    border-radius: 3px;
 
     background: #E8F7EF;
     color: #0F766E;
 
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
+}
 
-    width: fit-content;
+.sync-text {
+    flex: 1;
+    min-width: 0;
 }
 
 .sync-badge.pending {
@@ -583,6 +598,11 @@ button:active {
 .see-all-notif:hover { text-decoration: underline; }
 
 @media (max-width: 480px) {
+
+   .balance-sub {
+        font-size: 10px;
+    }
+
   .balance-inner {
     flex-direction: row;
     gap: 10px;
@@ -600,14 +620,75 @@ button:active {
   }
 
   .balance-right {
-      align-items: flex-start;
+    align-items: flex-start;
   }
 
   .sync-badge {
-      align-self: flex-start;
+    font-size: 10px;
+    padding: 7px 10px;
+    gap: 6px;
+  }
+
+  .wallet-title {
+    font-size: 11px;
+  }
+
+  .updated-label {
+    font-size: 9px;
+  }
+
+  .updated-time {
+    font-size: 10px;
+  }
+
+ .balance-label {
+    font-size: 10px;
+  }
+
+  .balance-amount {
+    font-size: 20px;
   }
 }
 
 @media (max-width: 380px) {
-  .notif-dropdown { width: 260px; }
+
+  .balance-sub {
+        font-size: 9px;
+        letter-spacing: -0.2px;
+    }
+
+  .notif-dropdown { 
+    width: 260px; 
+  }
+
+  .sync-badge {
+      font-size: 9px;
+      padding: 6px 8px;
+      gap: 5px;
+    }
+
+    .wallet-title {
+      font-size: 10px;
+    }
+
+    .updated-label {
+      font-size: 8px;
+    }
+
+    .updated-time {
+      font-size: 9px;
+    }
+
+    .balance-label {
+      font-size: 9px;
+    }
+
+    .balance-amount {
+      font-size: 18px;
+    }
+
+    .sync-dot {
+      width: 6px;
+      height: 6px;
+    }
 }
