@@ -2,13 +2,16 @@ import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { loginUser, checkPinSet } from "../services/api";
 import { persistValue, hasResumableSession } from "../services/sessionUtils";
+import { restoreQuarantineIfPresent } from "../services/quarantineService";
 import { refreshOnStartup } from "../services/token";
 import { useNetwork } from "../hooks/useNetwork";
 import UpdateModal from "../components/UpdateModal";
-import { checkForUpdate, markPromptSeen } from "../services/versionService";
+import { checkForUpdate } from "../services/versionService";
 import { performHardReset } from "../services/hardReset";
 import "../styles/login.css";
 import { getIsOnline } from "../services/networkService";
+
+const MANDATORY_POLL_MS = 15_000;
 
 function Login() {
   const navigate = useNavigate();
@@ -26,21 +29,19 @@ function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
+  const [activeSessionModal, setActiveSessionModal] = useState(false);
 
   useEffect(() => {
- 
     async function checkUpdateThenSession() {
       if (getIsOnline()) {
         const { updateAvailable, remoteBuildId } = await checkForUpdate();
         if (updateAvailable) {
           setUpdateInfo({ show: true, remoteBuildId });
           setIsCheckingSession(false);
-          return; 
+          return;
         }
       }
 
-      // No update (or offline, where we can't check) — proceed exactly as before
       if (!hasResumableSession()) {
         setIsCheckingSession(false);
         return;
@@ -62,21 +63,48 @@ function Login() {
     checkUpdateThenSession();
   }, [navigate]);
 
-  function handleUpdateLater() {
-    if (updateInfo.remoteBuildId) markPromptSeen(updateInfo.remoteBuildId);
-    setUpdateInfo({ show: false, remoteBuildId: null });
-    setIsCheckingSession(false); // fall through to normal login screen
-  }
+  // Aggressive, unavoidable update check while on the login screen — this
+  // is the only place an update can safely be applied, since a fresh
+  // login here is guaranteed to have zero pending transactions. Polls
+  // every 15s and re-checks immediately whenever the tab regains focus,
+  // so a connection that comes back mid-visit is caught right away
+  // without needing a manual refresh.
+  useEffect(() => {
+    let cancelled = false;
+
+    async function poll() {
+      if (!getIsOnline()) return;
+      try {
+        const { updateAvailable, remoteBuildId } = await checkForUpdate();
+        if (!cancelled && updateAvailable) {
+          setUpdateInfo({ show: true, remoteBuildId });
+        }
+      } catch (err) {
+        console.warn("[Login] Mandatory update check failed:", err);
+      }
+    }
+
+    const intervalId = setInterval(poll, MANDATORY_POLL_MS);
+
+    function handleVisibility() {
+      if (document.visibilityState === "visible") poll();
+    }
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, []);
 
   async function handleUpdateNow() {
     setIsUpdating(true);
     try {
-      await performHardReset(); // navigates away; nothing after this runs
+      await performHardReset();
     } catch (err) {
       console.error("[Login] Hard reset failed:", err);
       setIsUpdating(false);
-      setUpdateInfo({ show: false, remoteBuildId: null });
-      setIsCheckingSession(false);
     }
   }
 
@@ -118,6 +146,9 @@ function Login() {
     try {
       const data = await loginUser(formData.phoneNumber, formData.password);
 
+      sessionStorage.setItem("sessionToken", data.token);
+      sessionStorage.setItem("accessTokenExpiresIn", data.accessTokenExpiresIn);
+
       persistValue("walletId", data.wallet_id);
       persistValue("userId", data.user_id);
       persistValue("phoneNumber", data.phone_number);
@@ -132,6 +163,11 @@ function Login() {
       persistValue("refreshTokenExpiresIn", data.refreshTokenExpiresIn);
       persistValue("tokenIssuedAt", Date.now().toString());
 
+      const hadQuarantinedData = await restoreQuarantineIfPresent(data.wallet_id);
+      if (hadQuarantinedData) {
+        sessionStorage.setItem("pendingQuarantineSync", "true");
+      }
+
       const pinSet = await checkPinSet(data.wallet_id);
       if (pinSet === false) {
         setShowPinModal(true);
@@ -140,10 +176,14 @@ function Login() {
       }
     } catch (err) {
       console.error("Login error:", err);
-      setErrorModal({
-        show: true,
-        message: err.message || "Something went wrong. Please try again.",
-      });
+      if (err.status === 409) {
+        setActiveSessionModal(true);
+      } else {
+        setErrorModal({
+          show: true,
+          message: err.message || "Something went wrong. Please try again.",
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -157,6 +197,20 @@ function Login() {
             Checking session...
           </p>
         </div>
+      </div>
+    );
+  }
+
+  // Mandatory update block — nothing else on this page renders. No "Later"
+  // path exists: the only way past this screen is to update.
+  if (updateInfo.show) {
+    return (
+      <div className="auth-page">
+        <UpdateModal
+          onUpdate={handleUpdateNow}
+          isUpdating={isUpdating}
+          mandatory
+        />
       </div>
     );
   }
@@ -284,12 +338,21 @@ function Login() {
         </div>
       )}
 
-      {updateInfo.show && (
-        <UpdateModal
-          onLater={handleUpdateLater}
-          onUpdate={handleUpdateNow}
-          isUpdating={isUpdating}
-        />
+      {activeSessionModal && (
+        <div className="modal-overlay">
+          <div className="modal-card">
+            <div className="modal-icon">🔒</div>
+            <h2 className="modal-title">Already signed in elsewhere</h2>
+            <p className="modal-body">
+              This account is currently active on another device. To protect your
+              transaction data, please unlock your wallet on that device and log
+              out properly before signing in here.
+            </p>
+            <button className="btn-primary" onClick={() => setActiveSessionModal(false)}>
+              OK
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

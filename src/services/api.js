@@ -46,7 +46,9 @@ export async function loginUser(phoneNumber, password) {
   const data = await response.json();
   if (!response.ok) {
     const errorMessage = data.detail || data.message || "Login failed. Please try again.";
-    throw new Error(errorMessage);
+    const error = new Error(errorMessage);
+    error.status = response.status;
+    throw error;
   }
   return data;
 }
@@ -259,10 +261,12 @@ export async function refreshToken() {
     throw new Error("NO_REFRESH_TOKEN");
   }
 
-  const response = await fetch(`${BASE_URL}/wallet/refresh-token`, {
+  const phoneNumber = getPhoneNumber();
+
+  const response = await fetch(`${BASE_URL}/auth/refresh-token`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refreshToken: storedRefreshToken }),
+    body: JSON.stringify({ refreshToken: storedRefreshToken, phoneNumber }),
   });
 
   if (!response.ok) {
@@ -274,3 +278,4 @@ export async function refreshToken() {
 
   return response.json();
 }
+

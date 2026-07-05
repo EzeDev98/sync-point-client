@@ -14,6 +14,8 @@ import { syncTransaction } from "./api";
 import { calculateOfflineBalance } from "./walletLedger";
 import { getIsOnline } from "./networkService";
 
+let activeOnlineHandler = null;
+
 /**
  * Sync all PENDING transactions to the server.
  *
@@ -165,6 +167,12 @@ export async function getSyncTags() {
 }
 
 export function startAutoSync(onSyncComplete) {
+
+  if (activeOnlineHandler) {
+    window.removeEventListener("online", activeOnlineHandler);
+    activeOnlineHandler = null;
+  }
+
   async function handleOnline() {
     console.log("[SyncService] Device online — starting auto sync...");
     const count = await getPendingCount();
@@ -182,9 +190,13 @@ export function startAutoSync(onSyncComplete) {
   }
 
   registerBackgroundSync();
+  activeOnlineHandler = handleOnline;
   window.addEventListener("online", handleOnline);
 
   return () => {
     window.removeEventListener("online", handleOnline);
+    if (activeOnlineHandler === handleOnline) {
+      activeOnlineHandler = null;
+    }
   };
 }

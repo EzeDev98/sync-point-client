@@ -23,20 +23,19 @@ async function deleteAllCaches() {
 async function deleteAllIndexedDBs() {
   if (!("indexedDB" in window)) return;
 
-  // databases() is supported in all modern browsers (Chrome, Firefox,
-  // Safari 14+). Fall back to deleting the known SyncPoint DB by name
-  // if databases() isn't available, so old Safari still gets a reset.
+  const PROTECTED_DB_NAMES = ["syncpoint_quarantine_db"];
+
   if (typeof indexedDB.databases === "function") {
     const dbs = await indexedDB.databases();
     await Promise.all(
       dbs
-        .filter((db) => db.name)
+        .filter((db) => db.name && !PROTECTED_DB_NAMES.includes(db.name))
         .map(
           (db) =>
             new Promise((resolve) => {
               const req = indexedDB.deleteDatabase(db.name);
               req.onsuccess = () => resolve();
-              req.onerror = () => resolve(); // best-effort, don't block reset
+              req.onerror = () => resolve();
               req.onblocked = () => resolve();
             })
         )

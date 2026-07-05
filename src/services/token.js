@@ -1,6 +1,7 @@
 import { refreshToken } from "./api";
 import { clearTokenSession, readPersisted, persistValue } from "./sessionUtils";
 import { getIsOnline } from "./networkService";
+import { quarantineAndWipeSession } from "./quarantineService";
 
 const REFRESH_BUFFER_MS = 60_000;
 
@@ -19,6 +20,11 @@ function isAccessTokenExpiredOrClose() {
 function isRefreshTokenExpired() {
   const issuedAt = Number(readPersisted("tokenIssuedAt") || 0);
   const refreshExpiresIn = Number(readPersisted("refreshTokenExpiresIn") || 0);
+
+  if (!refreshExpiresIn || refreshExpiresIn <= 0) {
+    return false;
+  }
+
   return Date.now() >= issuedAt + refreshExpiresIn * 1000;
 }
 
@@ -30,11 +36,9 @@ async function doRefresh() {
       const accessToken = data.access_token;
       if (!accessToken) throw new Error("No access token in refresh response");
 
-      // Access token — sessionStorage only (gone on tab close)
       sessionStorage.setItem("sessionToken", accessToken);
       sessionStorage.setItem("accessTokenExpiresIn", data.expires_in);
 
-      // Refresh token — localStorage (survives app closure)
       persistValue("refreshToken", data.refresh_token);
       persistValue("refreshTokenExpiresIn", data.refresh_expires_in);
       persistValue("tokenIssuedAt", Date.now().toString());
@@ -56,7 +60,7 @@ export async function getValidToken() {
     }
 
     if (isRefreshTokenExpired()) {
-      clearTokenSession();
+      await quarantineAndWipeSession();
       window.dispatchEvent(new CustomEvent("session-expired"));
       throw new Error("SESSION_EXPIRED");
     }
@@ -66,11 +70,11 @@ export async function getValidToken() {
     } catch (err) {
       if (err.message === "REFRESH_INVALID" && getIsOnline()) {
         console.error("[token] Refresh token invalid:", err);
-        clearTokenSession();
+        await quarantineAndWipeSession();
         window.dispatchEvent(new CustomEvent("session-expired"));
         throw new Error("SESSION_EXPIRED");
       }
-      
+
       console.warn("[token] Refresh failed transiently, will retry:", err.message);
       return sessionStorage.getItem("sessionToken");
     }
@@ -78,13 +82,9 @@ export async function getValidToken() {
   return sessionStorage.getItem("sessionToken");
 }
 
-
-/**
- * Called at app startup when no access token exists but a refresh token does.
- * Returns the new access token on success, throws on failure.
- */
 export async function refreshOnStartup() {
   if (isRefreshTokenExpired()) {
+    await quarantineAndWipeSession();
     throw new Error("REFRESH_EXPIRED");
   }
   return doRefresh();

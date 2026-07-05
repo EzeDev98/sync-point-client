@@ -445,6 +445,41 @@ export async function clearAllTransactions() {
   });
 }
 
+/**
+ * Get all raw records (still encrypted) — no decryption, no DEK required.
+ * Used by quarantineService to preserve data when the DEK isn't unlocked.
+ */
+export async function getAllRawRecords() {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readonly");
+    const store = tx.objectStore(STORE_NAME);
+    const req = store.getAll();
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = (event) => reject(event.target.error);
+  });
+}
+
+/**
+ * Write raw records back as-is (still encrypted) — no DEK required.
+ * Used by quarantineService when restoring a previously quarantined session.
+ */
+export async function restoreRawRecords(records) {
+  if (!records || records.length === 0) return 0;
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE_NAME, "readwrite");
+    const store = tx.objectStore(STORE_NAME);
+    let count = 0;
+    for (const record of records) {
+      store.put(record);
+      count++;
+    }
+    tx.oncomplete = () => resolve(count);
+    tx.onerror = (event) => reject(event.target.error);
+  });
+}
+
 
 /**
  * Save a financial ledger transaction (FUND, TRANSFER_TO_ONLINE, etc.)

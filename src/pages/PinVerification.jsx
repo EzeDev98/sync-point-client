@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { verifyWalletPin } from "../services/api";
 import { readPersisted } from "../services/sessionUtils";
-import { restoreEncryption, initializeEncryption } from "../services/cryptoService";
-import { startAutoSync } from "../services/syncService";
+import { isEncryptionReady, restoreEncryption, initializeEncryption } from "../services/cryptoService";
+import { startAutoSync, syncPendingTransactions } from "../services/syncService";
 import { saveOfflinePinVerifier } from "../services/savePinVerifier";
 import { useNetwork } from "../hooks/useNetwork";
 import "../styles/auth.css";
@@ -17,6 +17,7 @@ function PinVerification() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorModal, setErrorModal] = useState({ show: false, message: "" });
   const { isOffline } = useNetwork();
+  const [isRestoringTransactions, setIsRestoringTransactions] = useState(false);
 
   // Read walletId from localStorage (persisted across app closure)
   const walletId = readPersisted("walletId");
@@ -67,13 +68,21 @@ function PinVerification() {
     setIsSubmitting(true);
 
     try {
+      // A quick re-lock (screen slept, app backgrounded briefly) never tore
+      // down the JS runtime, so the DEK is still live in memory. In that
+      // case this is just a lock-screen check, not a fresh session resume —
+      // verify locally and skip re-running encryption setup or re-starting
+      // auto-sync (which would otherwise register a duplicate "online"
+      // listener every single unlock).
+      const isQuickRelock = sessionStorage.getItem("walletLocked") === "true" && isEncryptionReady();
 
       let isValid;
-
-      if (isOffline) {
-          isValid = await verifyOfflinePin(pin);
+      if (isQuickRelock) {
+        isValid = await verifyOfflinePin(pin);
+      } else if (isOffline) {
+        isValid = await verifyOfflinePin(pin);
       } else {
-          isValid = await verifyWalletPin(walletId, pin);
+        isValid = await verifyWalletPin(walletId, pin);
       }
 
       if (!isValid) {
@@ -82,14 +91,17 @@ function PinVerification() {
         return;
       }
 
-      if (!isOffline) {
-          await saveOfflinePinVerifier(pin);
+      sessionStorage.removeItem("walletLocked");
+
+      if (isQuickRelock) {
+        navigate("/dashboard", { replace: true });
+        return;
       }
 
-       // ── Restore encryption context ─────────────────────────────────────
-      // After app closure the access token is gone but wrappedDEK in
-      // localStorage can be unwrapped using the new access token we just
-      // obtained via refreshOnStartup() in Login.jsx.
+      if (!isOffline) {
+        await saveOfflinePinVerifier(pin);
+      }
+
       const wrappedDEKExists = !!localStorage.getItem("wrappedDEK");
       if (wrappedDEKExists) {
         await restoreEncryption(pin);
@@ -97,22 +109,25 @@ function PinVerification() {
         await initializeEncryption(pin);
       }
 
-      // ── Restart auto-sync scheduler ────────────────────────────────────
-      // startAutoSync listens for the "online" event and processes pending
-      // transactions. We kick it off here so it starts immediately after
-      // the wallet is unlocked without requiring a full login.
+      const pendingQuarantineSync = sessionStorage.getItem("pendingQuarantineSync") === "true";
+      sessionStorage.removeItem("pendingQuarantineSync");
 
+      if (pendingQuarantineSync && !isOffline) {
+        setIsRestoringTransactions(true);
+        try {
+          await syncPendingTransactions();
+        } catch (err) {
+          console.warn("[PinVerification] Quarantine sync failed — normal auto-sync will retry:", err.message);
+        } finally {
+          setIsRestoringTransactions(false);
+        }
+      }
 
       if (!isOffline) {
-          startAutoSync((result) => {
-              console.log("[PinVerification] Auto-sync on resume:", result);
-
-              window.dispatchEvent(
-                  new CustomEvent("sync-result", {
-                      detail: result,
-                  })
-              );
-          });
+        startAutoSync((result) => {
+          console.log("[PinVerification] Auto-sync on resume:", result);
+          window.dispatchEvent(new CustomEvent("sync-result", { detail: result }));
+        });
       }
 
       navigate("/dashboard", { replace: true });
@@ -215,6 +230,19 @@ function PinVerification() {
           </button>
         </form>
       </div>
+
+      {isRestoringTransactions && (
+        <div className="modal-overlay">
+          <div className="modal-card" style={{ textAlign: "center" }}>
+            <div className="modal-icon">🔄</div>
+            <h2 className="modal-title">Auto-syncing previous transactions</h2>
+            <p className="modal-body">
+              We found transactions from your last session on this device.
+              Please wait while we sync them — this will only take a moment.
+            </p>
+          </div>
+        </div>
+      )}
 
       {errorModal.show && (
         <div className="modal-overlay">
