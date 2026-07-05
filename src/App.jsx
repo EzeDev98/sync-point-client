@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { isPWAInstalled } from "./services/deviceCompatibility";
 import { checkForUpdate } from "./services/versionService";
 import { getIsOnline } from "./services/networkService";
