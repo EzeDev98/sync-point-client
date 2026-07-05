@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { isPWAInstalled } from "./services/deviceCompatibility";
 import { checkForUpdate } from "./services/versionService";
@@ -19,6 +19,8 @@ import Offline from "./pages/Offline";
 
 const REMINDER_POLL_MS = 5 * 60 * 1000;
 
+const PROTECTED_PATHS = ["/dashboard", "/fund", "/receive", "/send"];
+
 function InstallGuard({ children }) {
   if (!isPWAInstalled()) {
     return <Navigate to="/install" replace />;
@@ -26,11 +28,44 @@ function InstallGuard({ children }) {
   return children;
 }
 
-// Locks the wallet the instant the app is backgrounded — tab switch, app
-// minimized, screen lock — for any duration at all. Re-entering requires
-// PIN verification again, matching standard banking-app behavior. The
-// flag lives in sessionStorage so it's naturally cleared on a full reload
-// (a fresh app open already goes through PinVerification's normal path).
+// Actively enforces the lock the instant the app is backgrounded for any
+// duration, and the instant it becomes visible again — rather than
+// passively waiting for some unrelated re-render to notice. Mounted once,
+// inside the Router, so it can navigate imperatively regardless of which
+// route currently happens to be showing.
+function AppLockGate() {
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    function handleVisibilityChange() {
+      const hasSession = !!localStorage.getItem("walletId");
+      if (!hasSession) return;
+
+      if (document.visibilityState === "hidden") {
+        sessionStorage.setItem("walletLocked", "true");
+        return;
+      }
+
+      // visibilityState === "visible"
+      const isLocked = sessionStorage.getItem("walletLocked") === "true";
+      const onProtectedRoute = PROTECTED_PATHS.some((p) => location.pathname.startsWith(p));
+
+      if (isLocked && onProtectedRoute) {
+        navigate("/verifypin", { replace: true });
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [navigate, location.pathname]);
+
+  return null;
+}
+
+// Still needed as a render-time guard for the case where the user
+// navigates via a link/back-button while locked, even without a
+// visibility change occurring.
 function RequireUnlock({ children }) {
   const hasSession = !!localStorage.getItem("walletId");
   const isLocked = sessionStorage.getItem("walletLocked") === "true";
@@ -55,29 +90,12 @@ function App() {
     return () => window.removeEventListener("session-expired", handleSessionExpired);
   }, []);
 
-  // Locks the wallet on any backgrounding of the app, regardless of how
-  // brief. RequireUnlock consults this flag on every protected route render.
-  useEffect(() => {
-    function handleVisibilityChange() {
-      if (document.visibilityState === "hidden") {
-        sessionStorage.setItem("walletLocked", "true");
-      }
-    }
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
-  }, []);
-
-  // Soft, non-destructive update reminder for authenticated users. Never
-  // triggers performHardReset() — an authenticated user may have pending
-  // offline transactions, so no update action can safely happen here.
-  // This only reminds them to sync, log out, and update from /login,
-  // where the actual (safe) update flow lives.
   useEffect(() => {
     let cancelled = false;
 
     async function poll() {
       if (!getIsOnline()) return;
-      if (!localStorage.getItem("walletId")) return; // not logged in, nothing to remind
+      if (!localStorage.getItem("walletId")) return;
       try {
         const { updateAvailable, remoteBuildId } = await checkForUpdate();
         if (!cancelled && updateAvailable) {
@@ -99,6 +117,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <AppLockGate />
       <Routes>
         <Route path="/" element={<Onboarding />} />
         <Route path="/install" element={<InstallPage />} />
