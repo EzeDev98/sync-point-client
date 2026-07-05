@@ -16,9 +16,12 @@ import FundWallet from "./pages/FundWallet";
 import ReceivePayment from "./pages/ReceivePayment";
 import SendMoney from "./pages/SendMoney";
 import Offline from "./pages/Offline";
+import { getPendingCount } from "./services/indexedDbService";
+import { syncPendingTransactionsGuarded } from "./services/syncService";
 
+const PERIODIC_SYNC_MS = 10 * 60 * 1000;
+const MAX_OFFLINE_PENDING = 10;
 const REMINDER_POLL_MS = 5 * 60 * 1000;
-
 const PROTECTED_PATHS = ["/dashboard", "/fund", "/receive", "/send"];
 
 function InstallGuard({ children }) {
@@ -75,8 +78,49 @@ function RequireUnlock({ children }) {
   return children;
 }
 
+// Fires every 10 minutes while a session exists. Online: triggers a sync
+// if anything is pending. Offline: shows a non-blocking reminder if
+// anything is pending, and separately flags the hard cap so transaction
+// creation can be blocked once the limit is hit (enforced at the
+// creation call site, not here).
+function PeriodicSyncGate({ onOfflineReminder }) {
+  useEffect(() => {
+    let cancelled = false;
+
+    async function tick() {
+      const hasSession = !!localStorage.getItem("walletId");
+      if (!hasSession) return;
+
+      const pendingCount = await getPendingCount();
+      if (pendingCount === 0) return;
+
+      if (getIsOnline()) {
+        try {
+          await syncPendingTransactionsGuarded();
+        } catch (err) {
+          console.warn("[App] Periodic sync failed:", err.message);
+        }
+      } else if (!cancelled) {
+        onOfflineReminder(pendingCount);
+      }
+    }
+
+    const intervalId = setInterval(tick, PERIODIC_SYNC_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(intervalId);
+    };
+  }, [onOfflineReminder]);
+
+  return null;
+}
+
 function App() {
   const [updateReminder, setUpdateReminder] = useState({ show: false, remoteBuildId: null });
+  const [syncReminder, setSyncReminder] = useState({ show: false, pendingCount: 0 });
+  const handleOfflineReminder = useCallback((pendingCount) => {
+    setSyncReminder({ show: true, pendingCount });
+  }, []);
 
   useEffect(() => {
     function handleSessionExpired() {
@@ -118,6 +162,7 @@ function App() {
   return (
     <BrowserRouter>
       <AppLockGate />
+      <PeriodicSyncGate onOfflineReminder={handleOfflineReminder} />
       <Routes>
         <Route path="/" element={<Onboarding />} />
         <Route path="/install" element={<InstallPage />} />
@@ -150,6 +195,27 @@ function App() {
             <button
               className="btn-primary"
               onClick={() => setUpdateReminder({ show: false, remoteBuildId: null })}
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
+      {syncReminder.show && (
+        <div className="modal-overlay">
+          <div className="modal-card">
+            <div className="modal-icon">📡</div>
+            <h2 className="modal-title">You have pending transactions</h2>
+            <p className="modal-body">
+              You have {syncReminder.pendingCount} transaction(s) waiting to sync.
+              Please connect to the internet soon so they don't get stuck.
+              {syncReminder.pendingCount >= MAX_OFFLINE_PENDING &&
+                " You've reached the maximum offline limit — you must go online to sync before creating any new transactions."}
+            </p>
+            <button
+              className="btn-primary"
+              onClick={() => setSyncReminder({ show: false, pendingCount: 0 })}
             >
               OK
             </button>

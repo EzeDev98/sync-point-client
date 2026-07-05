@@ -14,6 +14,7 @@ import { syncTransaction } from "./api";
 import { calculateOfflineBalance } from "./walletLedger";
 import { getIsOnline } from "./networkService";
 
+let syncInProgress = false;
 let activeOnlineHandler = null;
 
 /**
@@ -127,6 +128,19 @@ export async function syncPendingTransactions(onProgress) {
   }
 }
 
+export async function syncPendingTransactionsGuarded(onProgress) {
+  if (syncInProgress) {
+    console.log("[SyncService] Sync already in progress — skipping.");
+    return { total: 0, synced: 0, failed: 0, message: "Sync already in progress." };
+  }
+  syncInProgress = true;
+  try {
+    return await syncPendingTransactions(onProgress);
+  } finally {
+    syncInProgress = false;
+  }
+}
+
 export function isOnline() {
   return navigator.onLine;
 }
@@ -179,7 +193,7 @@ export function startAutoSync(onSyncComplete) {
     if (count === 0) return;
 
     try {
-      const result = await syncPendingTransactions();
+      const result = await syncPendingTransactionsGuarded();
       console.log("[SyncService] Auto sync result:", result);
       if (onSyncComplete) onSyncComplete(result);
     } catch (err) {

@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 import { QRCodeSVG } from "qrcode.react";
-import { saveTransaction, updateTransactionStatus } from "../services/indexedDbService";
+import { saveTransaction, updateTransactionStatus, getPendingCount } from "../services/indexedDbService";
+import { getIsOnline } from "../services/networkService";
 import { calculateOfflineBalance } from "../services/walletLedger";
 import "../styles/auth.css";
 
@@ -32,6 +33,7 @@ function SendMoney() {
   const senderName = `${firstName} ${lastName}`.trim() || "User";
 
   const isSessionValid = Boolean(senderWalletId && senderPhone);
+  const MAX_OFFLINE_PENDING = 10;
 
   // Kept in sync with offlineBalance state, but read inside onScanSuccess
   // via .current instead of closing over the state value directly. This is
@@ -132,6 +134,17 @@ function SendMoney() {
             message: "You cannot send money to yourself.",
           });
           return;
+        }
+
+        if (!getIsOnline()) {
+          const pendingCount = await getPendingCount();
+          if (pendingCount >= MAX_OFFLINE_PENDING) {
+            setErrorModal({
+              show: true,
+              message: `You've reached the maximum of ${MAX_OFFLINE_PENDING} pending offline transactions. Please connect to the internet to sync before sending more.`,
+            });
+            return;
+          }
         }
 
         const currentBalance = offlineBalanceRef.current;
