@@ -104,6 +104,18 @@ export async function syncPendingTransactions(onProgress) {
   } catch (err) {
     console.error("[SyncService] Batch sync failed:", err.message);
 
+    const isNetworkFailure = !navigator.onLine || err instanceof TypeError || /failed to fetch|network|load failed/i.test(err.message || "");
+
+    if (isNetworkFailure) {
+      return {
+        total: pending.length,
+        synced: 0,
+        failed: 0,
+        networkError: true,
+        message: "Connection issue — will retry automatically.",
+      };
+    }
+
     let failed = 0;
     for (const transaction of validTransactions) {
       await markTransactionFailed(transaction.transactionRef, err.message);

@@ -100,12 +100,11 @@ export async function saveTransaction(transaction) {
     id: transaction.transactionRef,
     iv,
     data,
-    // Plaintext metadata — for querying only
     status: transaction.status || "PENDING",
     entryType: transaction.entryType,   // "DEBIT" | "CREDIT"
     type: transaction.type,             // "TRANSFER"
     createdAt: transaction.createdAt || new Date().toISOString(),
-    synced: false,
+    synced: transaction.synced === true,
     syncAttempts: 0,
     lastSyncError: null,
   };
@@ -497,5 +496,20 @@ export async function saveLedgerTransaction(transaction) {
   if (!transaction.entryType || !["CREDIT", "DEBIT"].includes(transaction.entryType)) {
     throw new Error("[IndexedDB] saveLedgerTransaction: entryType must be CREDIT or DEBIT.");
   }
-  return saveTransaction(transaction);
+
+  // FUND and TRANSFER_TO_ONLINE are online-only operations — by the time
+  // this local ledger entry is written, the backend has ALREADY confirmed
+  // it synchronously (FundWallet.jsx only calls this after
+  // fundOfflineWallet()/transferToOnline() succeeds). The server already
+  // knows about this transaction through its own dedicated endpoint, not
+  // through the P2P sync queue, so there is nothing left to sync. Marking
+  // it synced immediately keeps it out of getPendingTransactions() and
+  // makes the Dashboard show "Synced" right away instead of a misleading
+  // "Pending sync".
+  const isOnlineConfirmedType = ["FUND", "TRANSFER_TO_ONLINE"].includes(transaction.type);
+
+  return saveTransaction({
+    ...transaction,
+    synced: isOnlineConfirmedType ? true : undefined,
+  });
 }

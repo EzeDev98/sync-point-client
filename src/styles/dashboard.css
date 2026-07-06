@@ -39,7 +39,11 @@ button:active {
   z-index: 10;
 }
 
-.sp-logo { display: flex; align-items: center; gap: 8px; }
+.sp-logo { 
+  display: flex; 
+  align-items: center; 
+  gap: 8px; 
+}
 
 .sp-logo-icon {
   width: 28px;
@@ -82,7 +86,9 @@ button:active {
   transition: background 0.15s;
 }
 
-.sp-icon-btn:hover { background: #F8FAFA; }
+.sp-icon-btn:hover { 
+  background: #F8FAFA; 
+}
 
 .notif-dot {
   width: 7px;
@@ -95,10 +101,11 @@ button:active {
   border: 1.5px solid #FFFFFF;
 }
 
-/* BODY */
-.sp-body { padding: 0 20px; flex: 1; }
+.sp-body { 
+  padding: 0 20px; 
+  flex: 1; 
+}
 
-/* GREETING */
 .greeting-row {
   display: flex;
   align-items: center;
@@ -385,7 +392,25 @@ button:active {
   font-family: inherit;
 }
 
-.tx-list { display: flex; flex-direction: column; }
+.tx-list {
+  display: flex;
+  flex-direction: column;
+  max-height: 320px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #D1D5DB transparent;
+}
+
+.tx-list::-webkit-scrollbar {
+  width: 5px;
+}
+.tx-list::-webkit-scrollbar-thumb {
+  background: #D1D5DB;
+  border-radius: 10px;
+}
+.tx-list::-webkit-scrollbar-track {
+  background: transparent;
+}
 
 .tx-item {
   display: flex;

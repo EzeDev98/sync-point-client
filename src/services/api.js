@@ -1,6 +1,6 @@
 import { getValidToken } from "./token";
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:2000/api/v1";
-// const BASE_URL = "http://localhost:2000/api/v1";
+// const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:2000/api/v1";
+const BASE_URL = "http://localhost:2000/api/v1";
 import { readPersisted } from "./sessionUtils"; 
 
 function getPhoneNumber() {
@@ -224,9 +224,9 @@ export async function verifyWalletPin(walletId, pin) {
 // ============================================
 // SYNC OFFLINE TRANSACTIONS 
 // ============================================
-export async function syncTransaction(transactions) {
+export async function syncTransaction(transaction) {
 
-  if (!Array.isArray(transactions) || transactions.length === 0) {
+  if (!Array.isArray(transaction) || transaction.length === 0) {
       return { 
         succes: true,
         message: "No transaction to sync."
@@ -244,12 +244,12 @@ export async function syncTransaction(transactions) {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify(transactions),
+    body: JSON.stringify(transaction),
   });
   const data = await response.json();
   if (!response.ok) {
     throw new Error(
-      data.detail || data.message || "Sync failed for transaction: " + transactionRef
+      data.detail || data.message || `Sync failed for ${transaction.length} transaction(s).`
     );
   }
   return data;

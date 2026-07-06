@@ -197,7 +197,7 @@ function Dashboard() {
   }
 
   async function handleSync() {
-
+    
     if (isOffline) {
       setNoInternetModal(true);
       return;
@@ -206,36 +206,45 @@ function Dashboard() {
     setIsSyncing(true);
     setSyncResult(null);
 
-    // Yield to the browser so the spinner paints before work begins
     await new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
 
     const MIN_SPIN_MS = 600;
+    const MAX_RETRIES = 4;
     const started = Date.now();
 
-    try {
-      const result = await syncPendingTransactions();
+    let attempt = 0;
+    let result;
 
-      const elapsed = Date.now() - started;
-      if (elapsed < MIN_SPIN_MS) {
-        await new Promise((resolve) => setTimeout(resolve, MIN_SPIN_MS - elapsed));
+    // Keep retrying quietly, spinner staying active, as long as each
+    // failure is a transient network issue rather than a real rejection.
+    while (attempt <= MAX_RETRIES) {
+      try {
+        result = await syncPendingTransactions();
+      } catch (err) {
+        console.error("[Dashboard] Sync failed:", err);
+        result = { message: "Sync failed. Please try again.", failed: 1, synced: 0 };
+        break;
       }
 
-      setSyncResult(result);
+      if (!result.networkError) break; // real success or real failure — stop here
+
+      attempt++;
+      if (attempt > MAX_RETRIES) break;
+      await new Promise((resolve) => setTimeout(resolve, 2000 * attempt)); // 2s, 4s, 6s, 8s
+    }
+
+    const elapsed = Date.now() - started;
+    if (elapsed < MIN_SPIN_MS) {
+      await new Promise((resolve) => setTimeout(resolve, MIN_SPIN_MS - elapsed));
+    }
+
+    setSyncResult(result);
+    try {
       await refreshData();
     } catch (err) {
-      console.error("[Dashboard] Sync failed:", err);
-      const elapsed = Date.now() - started;
-      if (elapsed < MIN_SPIN_MS) {
-        await new Promise((resolve) => setTimeout(resolve, MIN_SPIN_MS - elapsed));
-      }
-      setSyncResult({
-        message: "Sync failed. Please try again.",
-        failed: 1,
-        synced: 0,
-      });
-    } finally {
-      setIsSyncing(false);
+      console.error("[Dashboard] Post-sync refresh failed:", err);
     }
+    setIsSyncing(false);
   }
 
   async function handleLogout() {
