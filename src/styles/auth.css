@@ -1637,6 +1637,42 @@ button:active {
   .success-amount { font-size: 30px; }
 }
 
+/* CENTER FINAL SCREEN (Send/Receive success — "Ready to Complete") */
+.centered-screen-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 16px;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: 380px;
+  margin: 0 auto;
+  padding: 24px 20px;
+}
+
+.centered-screen-wrapper .btn-cta-arrow {
+  width: 100%;
+}
+
+.btn-cta-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.cta-arrow-nudge {
+  flex-shrink: 0;
+  animation: nudgeRight 1.4s ease-in-out infinite;
+}
+
+@keyframes nudgeRight {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(4px); }
+}
 
 
 /* ============================================
