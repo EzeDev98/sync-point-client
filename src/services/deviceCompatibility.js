@@ -93,12 +93,9 @@ export function checkDeviceCompatibility() {
 }
 
 export function isPWAInstalled() {
-
   if (window.matchMedia("(display-mode: standalone)").matches) return true;
   if (window.navigator.standalone === true) return true;
   if (window.matchMedia("(display-mode: fullscreen)").matches) return true;
-
-  if (localStorage.getItem("pwa_installed") === "true") return true;
-
+ 
   return false;
 }

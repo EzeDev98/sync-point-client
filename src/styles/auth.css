@@ -985,11 +985,23 @@ button:active {
   transition: opacity 0.2s ease;
 }
 
+/*
+  FIX: page-body previously only took up as much height as its content
+  needed, while the .sp-app wrapper was forced to min-height:100vh. Any
+  leftover viewport space was left dangling below the content instead of
+  being distributed around it. Making this flex:1 + justify-content:center
+  lets it fill the remaining space under the sticky header and center its
+  children (cards, banners, buttons) as a single group — both the card and
+  the button move down together, no bottom dead-zone.
+*/
 .page-body {
   padding: 24px 20px;
   display: flex;
   flex-direction: column;
   gap: 20px;
+  flex: 1;
+  justify-content: center;
+  min-height: 0;
 }
 
 /* ============================================
@@ -1559,39 +1571,23 @@ button:active {
 }
 
 /* SUCCESS SCREEN */
-/* .success-screen {
+/*
+  FIX: same top-heavy issue as .page-body — this used a big fixed top
+  padding (60px) instead of true centering, so on taller viewports the
+  card+message+button sat near the top with dead space below. Switched to
+  flex:1 + justify-content:center so it centers as a group within the
+  remaining space under the header, on every screen size.
+*/
+.success-screen {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  padding: 60px 24px 40px;
+  padding: 24px;
   text-align: center;
-} */
-
-.centered-screen-wrapper {
-  min-height: calc(100vh - 60px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  flex: 1;
   justify-content: center;
-  padding: 24px 20px;
-  text-align: center;
-}
-
-.btn-cta-arrow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.cta-arrow-nudge {
-  animation: nudgeRight 1.2s ease-in-out infinite;
-}
-
-@keyframes nudgeRight {
-  0%, 100% { transform: translateX(0); }
-  50% { transform: translateX(4px); }
+  min-height: 0;
 }
 
 .success-icon { font-size: 56px; }
@@ -2054,5 +2050,3 @@ button:active {
   .confirm-sent-amount { font-size: 28px; }
   .review-amount { font-size: 20px; }
 }
-
-
