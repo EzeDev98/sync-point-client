@@ -197,7 +197,7 @@ function Dashboard() {
   }
 
   async function handleSync() {
-    
+
     if (isOffline) {
       setNoInternetModal(true);
       return;
@@ -215,8 +215,6 @@ function Dashboard() {
     let attempt = 0;
     let result;
 
-    // Keep retrying quietly, spinner staying active, as long as each
-    // failure is a transient network issue rather than a real rejection.
     while (attempt <= MAX_RETRIES) {
       try {
         result = await syncPendingTransactions();
@@ -226,11 +224,11 @@ function Dashboard() {
         break;
       }
 
-      if (!result.networkError) break; // real success or real failure — stop here
+      if (!result.networkError) break; 
 
       attempt++;
       if (attempt > MAX_RETRIES) break;
-      await new Promise((resolve) => setTimeout(resolve, 2000 * attempt)); // 2s, 4s, 6s, 8s
+      await new Promise((resolve) => setTimeout(resolve, 2000 * attempt)); 
     }
 
     const elapsed = Date.now() - started;

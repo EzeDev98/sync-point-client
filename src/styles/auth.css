@@ -1559,13 +1559,39 @@ button:active {
 }
 
 /* SUCCESS SCREEN */
-.success-screen {
+/* .success-screen {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 16px;
   padding: 60px 24px 40px;
   text-align: center;
+} */
+
+.centered-screen-wrapper {
+  min-height: calc(100vh - 60px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 20px;
+  text-align: center;
+}
+
+.btn-cta-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.cta-arrow-nudge {
+  animation: nudgeRight 1.2s ease-in-out infinite;
+}
+
+@keyframes nudgeRight {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(4px); }
 }
 
 .success-icon { font-size: 56px; }

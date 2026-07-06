@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Html5Qrcode } from "html5-qrcode";
 import { saveTransaction, updateTransactionStatus, getTransactionByRef } from "../services/indexedDbService";
@@ -461,7 +461,7 @@ function ReceivePayment() {
                 {errors.amount ? (
                   <p className="field-error">{errors.amount}</p>
                 ) : (
-                  <p className="field-hint">Minimum ₦100 · Maximum ₦1,000,000</p>
+                  <p className="field-hint">Minimum ₦100 · Maximum ₦20,000</p>
                 )}
               </div>
 
@@ -528,8 +528,8 @@ function ReceivePayment() {
           </div>
 
           <div className="info-banner">
-            📱 Show this QR to the sender. Once they pay, tap{" "}
-            <strong>"I've Received Payment"</strong> — your camera will open
+            📱 Show this QR to the sender. Once they scan, tap{" "}
+            <strong>"Sender have scanned"</strong> — your camera will open
             to scan their confirmation QR.
           </div>
 
@@ -545,7 +545,7 @@ function ReceivePayment() {
                   onClick={() => setScreen("confirm")}
                   disabled={isProcessing}
                 >
-                  I've Received Payment
+                  Sender have scanned
                 </button>
                 <button
                   className="btn-secondary"
@@ -658,24 +658,31 @@ function ReceivePayment() {
       )}
 
       {screen === "success" && senderPayload && (
-        <div className="success-screen">
+        <div className="centered-screen-wrapper">
           <div className="success-icon">🎉</div>
           <div className="success-title">Ready to Complete</div>
           <div className="success-amount">
             ₦{Number(senderPayload.amount).toLocaleString()}
           </div>
           <div className="success-desc">
-            Tap below to credit your offline wallet.
+            Tap below to complete this transaction.
             <br />
             This transaction will sync when you're back online.
           </div>
           <button
-            className="btn-primary"
+            className="btn-primary btn-cta-arrow"
             style={{ maxWidth: 300 }}
             onClick={handleFinalizeCredit}
             disabled={isFinalizing}
           >
-            {isFinalizing ? "Processing..." : "Done — Back to Dashboard"}
+            {isFinalizing ? (
+              "Processing..."
+            ) : (
+              <>
+                Done, back to Dashboard
+                <ArrowRight size={16} className="cta-arrow-nudge" />
+              </>
+            )}
           </button>
         </div>
       )}
@@ -701,7 +708,6 @@ function ReceivePayment() {
 
 export default ReceivePayment;
 
-
 // import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 // import { useNavigate } from "react-router-dom";
 // import { ArrowLeft } from "lucide-react";
@@ -714,6 +720,7 @@ export default ReceivePayment;
 // function ReceivePayment() {
 //   const navigate = useNavigate();
 
+//   // form -> qr -> confirm (scan) -> reviewDetails -> success
 //   const [screen, setScreen] = useState("form");
 //   const [formData, setFormData] = useState({ amount: "", description: "" });
 //   const [errors, setErrors] = useState({});
@@ -723,8 +730,13 @@ export default ReceivePayment;
 //   const [qrExpired, setQrExpired] = useState(false);
 //   const timerRef = useRef(null);
 //   const [isProcessing, setIsProcessing] = useState(false);
+//   const [isFinalizing, setIsFinalizing] = useState(false);
 //   const [errorModal, setErrorModal] = useState({ show: false, message: "" });
 //   const [createdAt, setCreatedAt] = useState("");
+
+//   // Holds the sender's scanned + validated payload while the receiver
+//   // reviews it. Nothing is written to storage until handleFinalizeCredit runs.
+//   const [senderPayload, setSenderPayload] = useState(null);
 
 //   const scannerRef = useRef(null);
 //   const isScannerRunningRef = useRef(false);
@@ -834,6 +846,10 @@ export default ReceivePayment;
 //     await operation;
 //   }, []);
 
+//   // Scanning + validating the sender's QR no longer credits anything.
+//   // It only parses/validates the payload and hands off to a review screen;
+//   // the actual wallet credit happens later, on the receiver's own final
+//   // "Done" tap.
 //   const onScanSuccess = useCallback(
 //     async (decodedText) => {
 //       if (!isMountedRef.current) return;
@@ -842,30 +858,30 @@ export default ReceivePayment;
 //       setIsProcessing(true);
 
 //       try {
-//         let senderPayload;
+//         let parsedPayload;
 //         try {
-//           senderPayload = JSON.parse(decodedText);
+//           parsedPayload = JSON.parse(decodedText);
 //         } catch {
 //           throw new Error("Invalid QR code format. Please scan a valid transaction QR.");
 //         }
 
-//         if (senderPayload.type !== "TRANSFER") {
+//         if (parsedPayload.type !== "TRANSFER") {
 //           throw new Error(
 //             "Invalid QR code. Please scan the sender's transaction receipt QR."
 //           );
 //         }
 
-//         if (senderPayload.requestRef !== requestRef) {
+//         if (parsedPayload.requestRef !== requestRef) {
 //           throw new Error(
 //             "Payment request mismatch. This QR does not match your current request."
 //           );
 //         }
-//         if (senderPayload.receiverWalletId !== receiverWalletId) {
+//         if (parsedPayload.receiverWalletId !== receiverWalletId) {
 //           throw new Error("This payment is intended for a different wallet.");
 //         }
-//         if (Number(senderPayload.amount) !== Number(formData.amount)) {
+//         if (Number(parsedPayload.amount) !== Number(formData.amount)) {
 //           throw new Error(
-//             `Amount mismatch. Expected ₦${Number(formData.amount).toLocaleString()} but received ₦${Number(senderPayload.amount).toLocaleString()}.`
+//             `Amount mismatch. Expected ₦${Number(formData.amount).toLocaleString()} but received ₦${Number(parsedPayload.amount).toLocaleString()}.`
 //           );
 //         }
 //         if (new Date() > new Date(expiresAt)) {
@@ -873,13 +889,13 @@ export default ReceivePayment;
 //             "Payment request has expired. Please generate a new QR code."
 //           );
 //         }
-//         if (senderPayload.status !== "SUCCESS") {
+//         if (parsedPayload.status !== "SUCCESS") {
 //           throw new Error(
 //             "Payment is not confirmed. Ask the sender to complete the payment."
 //           );
 //         }
 
-//         const existing = await getTransactionByRef(senderPayload.transactionRef);
+//         const existing = await getTransactionByRef(parsedPayload.transactionRef);
 //         if (existing) {
 //           throw new Error("This transaction has already been processed.");
 //         }
@@ -887,38 +903,19 @@ export default ReceivePayment;
 //         const { formDataDescription, receiverName: rxName, receiverPhone: rxPhone } =
 //           scanContextRef.current;
 
-//         await saveTransaction({
-//           type: "TRANSFER",
-//           transactionRef: senderPayload.transactionRef,
-//           requestRef,
-//           status: "PENDING",
-//           amount: Number(senderPayload.amount),
-//           currency: senderPayload.currency || "NGN",
-//           description: senderPayload.description || formDataDescription || null,
-//           senderWalletId: senderPayload.senderWalletId,
-//           senderPhone: senderPayload.senderPhone,
-//           senderName: senderPayload.senderName,
-//           receiverWalletId,
-//           receiverPhone: rxPhone,
-//           receiverName: rxName,
-//           entryType: "CREDIT",
-//           createdAt: senderPayload.createdAt || new Date().toISOString(),
+//         // Store the validated draft for review — nothing is saved yet.
+//         setSenderPayload({
+//           ...parsedPayload,
+//           _creditDescription: parsedPayload.description || formDataDescription || null,
+//           _receiverName: rxName,
+//           _receiverPhone: rxPhone,
 //         });
-
-//         await updateTransactionStatus(senderPayload.transactionRef, "SUCCESS");
-
-//         // Recalculate balance from ledger — no manual arithmetic
-//         const newBalance = await calculateOfflineBalance();
-//         window.dispatchEvent(
-//           new CustomEvent("balance-updated", { detail: { balance: newBalance } })
-//         );
-
-//         setScreen("success");
+//         setScreen("reviewDetails");
 //       } catch (err) {
-//         console.error("[ReceivePayment] Confirmation error:", err);
+//         console.error("[ReceivePayment] Scan validation error:", err);
 //         setErrorModal({
 //           show: true,
-//           message: err.message || "Failed to confirm payment. Please try again.",
+//           message: err.message || "Failed to read payment QR. Please try again.",
 //         });
 //       } finally {
 //         setIsProcessing(false);
@@ -989,6 +986,7 @@ export default ReceivePayment;
 //     await operation;
 //   }, [onScanSuccess, onScanError]);
 
+//   // Scanner only ever runs on the "confirm" screen
 //   useEffect(() => {
 //     if (screen === "confirm") {
 //       startSenderScanner();
@@ -1048,11 +1046,12 @@ export default ReceivePayment;
 
 //   function getPageTitle() {
 //     switch (screen) {
-//       case "form":    return "Receive Payment";
-//       case "qr":      return "Payment QR Code";
-//       case "confirm": return "Scan Sender QR";
-//       case "success": return "Payment Received";
-//       default:        return "Receive Payment";
+//       case "form":          return "Receive Payment";
+//       case "qr":            return "Payment QR Code";
+//       case "confirm":       return "Scan Sender QR";
+//       case "reviewDetails": return "Confirm Transaction";
+//       case "success":       return "Payment Received";
+//       default:              return "Receive Payment";
 //     }
 //   }
 
@@ -1067,9 +1066,64 @@ export default ReceivePayment;
 //       case "confirm":
 //         setScreen("qr");
 //         break;
-//       case "success":
-//         navigate("/dashboard");
+//       case "reviewDetails":
+//         // Nothing written to storage yet — safe to go back and rescan.
+//         setSenderPayload(null);
+//         setScreen("confirm");
 //         break;
+//       case "success":
+//         // Credit has not happened yet (it only happens on the Done tap
+//         // below), so it's still safe to step back and re-review.
+//         setScreen("reviewDetails");
+//         break;
+//     }
+//   }
+
+//   // The ONLY place the credit is actually written to storage — triggered by
+//   // the receiver's own deliberate tap on the final screen.
+//   async function handleFinalizeCredit() {
+//     if (!senderPayload) return;
+//     setIsFinalizing(true);
+//     try {
+//       const existing = await getTransactionByRef(senderPayload.transactionRef);
+//       if (existing) {
+//         throw new Error("This transaction has already been processed.");
+//       }
+
+//       await saveTransaction({
+//         type: "TRANSFER",
+//         transactionRef: senderPayload.transactionRef,
+//         requestRef,
+//         status: "PENDING",
+//         amount: Number(senderPayload.amount),
+//         currency: senderPayload.currency || "NGN",
+//         description: senderPayload._creditDescription,
+//         senderWalletId: senderPayload.senderWalletId,
+//         senderPhone: senderPayload.senderPhone,
+//         senderName: senderPayload.senderName,
+//         receiverWalletId,
+//         receiverPhone: senderPayload._receiverPhone,
+//         receiverName: senderPayload._receiverName,
+//         entryType: "CREDIT",
+//         createdAt: senderPayload.createdAt || new Date().toISOString(),
+//       });
+
+//       await updateTransactionStatus(senderPayload.transactionRef, "SUCCESS");
+
+//       const newBalance = await calculateOfflineBalance();
+//       window.dispatchEvent(
+//         new CustomEvent("balance-updated", { detail: { balance: newBalance } })
+//       );
+
+//       navigate("/dashboard");
+//     } catch (err) {
+//       console.error("[ReceivePayment] Finalize credit error:", err);
+//       setErrorModal({
+//         show: true,
+//         message: err.message || "Could not complete the credit. Please try again.",
+//       });
+//     } finally {
+//       setIsFinalizing(false);
 //     }
 //   }
 
@@ -1117,7 +1171,7 @@ export default ReceivePayment;
 //                 {errors.amount ? (
 //                   <p className="field-error">{errors.amount}</p>
 //                 ) : (
-//                   <p className="field-hint">Minimum ₦100 · Maximum ₦1,000,000</p>
+//                   <p className="field-hint">Minimum ₦100 · Maximum ₦20,000</p>
 //                 )}
 //               </div>
 
@@ -1184,8 +1238,8 @@ export default ReceivePayment;
 //           </div>
 
 //           <div className="info-banner">
-//             📱 Show this QR to the sender. Once they pay, tap{" "}
-//             <strong>"I've Received Payment"</strong> — your camera will open
+//             📱 Show this QR to the sender. Once they scan, tap{" "}
+//             <strong>"Sender have scanned"</strong> — your camera will open
 //             to scan their confirmation QR.
 //           </div>
 
@@ -1201,7 +1255,7 @@ export default ReceivePayment;
 //                   onClick={() => setScreen("confirm")}
 //                   disabled={isProcessing}
 //                 >
-//                   I've Received Payment
+//                   Sender have scanned
 //                 </button>
 //                 <button
 //                   className="btn-secondary"
@@ -1258,24 +1312,80 @@ export default ReceivePayment;
 //         </div>
 //       )}
 
-//       {screen === "success" && (
+//       {screen === "reviewDetails" && senderPayload && (
+//         <div className="page-body">
+//           <div className="info-banner">
+//             Please check every detail below carefully before confirming.
+//           </div>
+
+//           <div className="confirm-card">
+//             <div className="confirm-row">
+//               <span className="confirm-row-label">Received from</span>
+//               <span className="confirm-row-value">{senderPayload.senderName}</span>
+//             </div>
+//             <div className="confirm-row">
+//               <span className="confirm-row-label">Sender phone</span>
+//               <span className="confirm-row-value">{senderPayload.senderPhone}</span>
+//             </div>
+//             <div className="confirm-divider" />
+//             <div className="confirm-row">
+//               <span className="confirm-row-label">Amount</span>
+//               <span className="confirm-row-value">
+//                 ₦{Number(senderPayload.amount).toLocaleString()}
+//               </span>
+//             </div>
+//             {senderPayload._creditDescription && (
+//               <div className="confirm-row">
+//                 <span className="confirm-row-label">Description</span>
+//                 <span className="confirm-row-value">{senderPayload._creditDescription}</span>
+//               </div>
+//             )}
+//             <div className="confirm-divider" />
+//             <div className="confirm-row">
+//               <span className="confirm-row-label">Receiving as</span>
+//               <span className="confirm-row-value">{senderPayload._receiverName}</span>
+//             </div>
+//             <div className="confirm-row">
+//               <span className="confirm-row-label">Transaction ref</span>
+//               <span className="confirm-row-value confirm-row-ref">
+//                 {senderPayload.transactionRef}
+//               </span>
+//             </div>
+//             <div className="confirm-row">
+//               <span className="confirm-row-label">Request ref</span>
+//               <span className="confirm-row-value confirm-row-ref">
+//                 {senderPayload.requestRef}
+//               </span>
+//             </div>
+//           </div>
+
+//           <div className="btn-group">
+//             <button className="btn-primary" onClick={() => setScreen("success")}>
+//               Confirm Transaction Details
+//             </button>
+//           </div>
+//         </div>
+//       )}
+
+//       {screen === "success" && senderPayload && (
 //         <div className="success-screen">
 //           <div className="success-icon">🎉</div>
-//           <div className="success-title">Payment Received!</div>
+//           <div className="success-title">Ready to Complete</div>
 //           <div className="success-amount">
-//             ₦{Number(formData.amount).toLocaleString()}
+//             ₦{Number(senderPayload.amount).toLocaleString()}
 //           </div>
 //           <div className="success-desc">
-//             Your offline wallet has been credited.
+//             Tap below to complete this transaction.
 //             <br />
 //             This transaction will sync when you're back online.
 //           </div>
 //           <button
 //             className="btn-primary"
 //             style={{ maxWidth: 300 }}
-//             onClick={() => navigate("/dashboard")}
+//             onClick={handleFinalizeCredit}
+//             disabled={isFinalizing}
 //           >
-//             Back to Dashboard
+//             {isFinalizing ? "Processing..." : "Done — Back to Dashboard"}
 //           </button>
 //         </div>
 //       )}

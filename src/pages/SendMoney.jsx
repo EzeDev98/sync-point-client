@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import { Html5Qrcode } from "html5-qrcode";
 import { QRCodeSVG } from "qrcode.react";
 import { saveTransaction, updateTransactionStatus, getPendingCount } from "../services/indexedDbService";
@@ -157,8 +157,8 @@ function SendMoney() {
           return;
         }
 
-        if (payload.amount > 1000000) {
-          setErrorModal({ show: true, message: "Maximum payment amount is ₦1,000,000." });
+        if (payload.amount > 20000) {
+          setErrorModal({ show: true, message: "Maximum payment amount is ₦20,000." });
           return;
         }
 
@@ -734,7 +734,7 @@ function SendMoney() {
       )}
 
       {screen === "success" && scannedData && transactionPayload && (
-        <div className="page-body">
+        <div className="centered-screen-wrapper">
           <div className="confirm-sent-card">
             <div className="confirm-sent-icon">✅</div>
             <div className="confirm-sent-title">Ready to Complete</div>
@@ -773,15 +773,22 @@ function SendMoney() {
           </div>
 
           <p style={{ fontSize: 12, color: "#6B7280", textAlign: "center", margin: 0 }}>
-            Tapping below will debit your wallet and mark this transaction as sent.
+            Tapping below will mark this transaction as sent.
           </p>
 
           <button
-            className="btn-primary"
+            className="btn-primary btn-cta-arrow"
             onClick={handleFinalizeDebit}
             disabled={isFinalizing}
           >
-            {isFinalizing ? "Processing..." : "Done — Back to Dashboard"}
+            {isFinalizing ? (
+              "Processing..."
+            ) : (
+              <>
+                Done, back to Dashboard
+                <ArrowRight size={16} className="cta-arrow-nudge" />
+              </>
+            )}
           </button>
         </div>
       )}
@@ -819,6 +826,7 @@ export default SendMoney;
 
 // function SendMoney() {
 //   const navigate = useNavigate();
+//   // scan -> review -> pin -> showQr -> confirmDetails -> success
 //   const [screen, setScreen] = useState("scan");
 //   const [scannedData, setScannedData] = useState(null);
 //   const [transactionPayload, setTransactionPayload] = useState(null);
@@ -826,6 +834,7 @@ export default SendMoney;
 //   const [showPin, setShowPin] = useState(false);
 //   const [errors, setErrors] = useState({});
 //   const [isSubmitting, setIsSubmitting] = useState(false);
+//   const [isFinalizing, setIsFinalizing] = useState(false);
 //   const [errorModal, setErrorModal] = useState({ show: false, message: "" });
 //   const [offlineBalance, setOfflineBalance] = useState(0);
 
@@ -844,13 +853,6 @@ export default SendMoney;
 //   const isSessionValid = Boolean(senderWalletId && senderPhone);
 //   const MAX_OFFLINE_PENDING = 10;
 
-//   // Kept in sync with offlineBalance state, but read inside onScanSuccess
-//   // via .current instead of closing over the state value directly. This is
-//   // the fix: without it, the balance resolving shortly after mount changes
-//   // onScanSuccess's identity mid-scan, which cascades into startScanner and
-//   // re-fires the screen effect — restarting the scanner while html5-qrcode's
-//   // first start() call is still in flight. That's what produced "Cannot
-//   // clear while scan is ongoing" and the removeChild/AbortError errors.
 //   const offlineBalanceRef = useRef(0);
 //   useEffect(() => {
 //     offlineBalanceRef.current = offlineBalance;
@@ -971,8 +973,8 @@ export default SendMoney;
 //           return;
 //         }
 
-//         if (payload.amount > 1000000) {
-//           setErrorModal({ show: true, message: "Maximum payment amount is ₦1,000,000." });
+//         if (payload.amount > 20000) {
+//           setErrorModal({ show: true, message: "Maximum payment amount is ₦20,000." });
 //           return;
 //         }
 
@@ -1052,7 +1054,7 @@ export default SendMoney;
 //     await operation;
 //   }, [onScanSuccess, onScanError]);
 
-//   // Screen-driven start/stop — identical shape to ReceivePayment.jsx
+//   // Screen-driven start/stop — scanner only ever runs on the "scan" screen
 //   useEffect(() => {
 //     if (screen === "scan" && isSessionValid) {
 //       startScanner();
@@ -1067,11 +1069,13 @@ export default SendMoney;
 
 //   function getPageTitle() {
 //     switch (screen) {
-//       case "scan":         return "Send Money";
-//       case "review":       return "Review Payment";
-//       case "pin":          return "Enter PIN";
-//       case "confirmation": return "Payment Sent";
-//       default:             return "Send Money";
+//       case "scan":          return "Send Money";
+//       case "review":        return "Review Payment";
+//       case "pin":           return "Enter PIN";
+//       case "showQr":        return "Show QR to Receiver";
+//       case "confirmDetails":return "Confirm Transaction";
+//       case "success":       return "Payment Sent";
+//       default:              return "Send Money";
 //     }
 //   }
 
@@ -1088,8 +1092,18 @@ export default SendMoney;
 //         setPin("");
 //         setScreen("review");
 //         break;
-//       case "confirmation":
-//         navigate("/dashboard");
+//       case "showQr":
+//         // Nothing has been written to storage yet — safe to go back and re-enter PIN.
+//         setPin("");
+//         setScreen("pin");
+//         break;
+//       case "confirmDetails":
+//         setScreen("showQr");
+//         break;
+//       case "success":
+//         // Debit has not happened yet (it only happens on the Done tap below),
+//         // so it's still safe to step back and re-review.
+//         setScreen("confirmDetails");
 //         break;
 //     }
 //   }
@@ -1118,11 +1132,16 @@ export default SendMoney;
 //     if (errors.pin) setErrors({});
 //   }
 
+//   // PIN entry only *prepares* the transaction (builds the QR to show the
+//   // receiver). It does NOT touch storage and does NOT debit anything.
+//   // The debit only happens later, when the sender explicitly taps
+//   // "Done — Back to Dashboard" on the final success screen, after both
+//   // sides have had a chance to confirm the handoff actually happened.
 //   async function handleSubmit(e) {
 //     e.preventDefault();
 
-//     const storedVerifier = localStorage.getItem("pin_verifier"); 
-//     const storedSalt = localStorage.getItem("pin_salt");  
+//     const storedVerifier = localStorage.getItem("pin_verifier");
+//     const storedSalt = localStorage.getItem("pin_salt");
 
 //     if (!storedVerifier || !storedSalt) {
 //       setErrorModal({ show: true, message: "Session expired. Please login again." });
@@ -1183,34 +1202,6 @@ export default SendMoney;
 
 //       const createdAt = new Date().toISOString();
 
-//       const senderTransaction = {
-//         type: "TRANSFER",
-//         transactionRef,
-//         requestRef: scannedData.requestRef,
-//         status: "PENDING",
-//         amount: Number(scannedData.amount),
-//         currency: scannedData.currency || "NGN",
-//         description: scannedData.description || `Payment to ${scannedData.receiverName}`,
-//         senderWalletId,
-//         senderPhone,
-//         senderName,
-//         receiverWalletId: scannedData.receiverWalletId,
-//         receiverPhone: scannedData.receiverPhone,
-//         receiverName: scannedData.receiverName,
-//         entryType: "DEBIT",
-//         createdAt,
-//       };
-
-//       await saveTransaction(senderTransaction);
-//       await updateTransactionStatus(transactionRef, "SUCCESS");
-
-//       // Recalculate balance from ledger — no manual arithmetic
-//       const newBalance = await calculateOfflineBalance();
-//       setOfflineBalance(newBalance);
-//       window.dispatchEvent(
-//         new CustomEvent("balance-updated", { detail: { balance: newBalance } })
-//       );
-
 //       const qr2Payload = {
 //         type: "TRANSFER",
 //         transactionRef,
@@ -1230,28 +1221,59 @@ export default SendMoney;
 
 //       setTransactionPayload(qr2Payload);
 //       setScannedData((prev) => ({ ...prev, transactionRef, createdAt }));
-//       setScreen("confirmation");
-
+//       setScreen("showQr");
 //     } catch (err) {
-//       console.error("[SendMoney] Payment error:", err);
-
-//       // Recalculate from ledger on failure — no manual rollback needed
-//       try {
-//         const restoredBalance = await calculateOfflineBalance();
-//         setOfflineBalance(restoredBalance);
-//         window.dispatchEvent(
-//           new CustomEvent("balance-updated", { detail: { balance: restoredBalance } })
-//         );
-//       } catch {
-//         // leave balance as-is if ledger read fails
-//       }
-
+//       console.error("[SendMoney] PIN verification error:", err);
 //       setErrorModal({
 //         show: true,
-//         message: err.message || "Payment failed. Please try again.",
+//         message: err.message || "Something went wrong. Please try again.",
 //       });
 //     } finally {
 //       setIsSubmitting(false);
+//     }
+//   }
+
+//   // The ONLY place the debit is actually written to storage — triggered by
+//   // the sender's own deliberate tap on the final screen.
+//   async function handleFinalizeDebit() {
+//     setIsFinalizing(true);
+//     try {
+//       const senderTransaction = {
+//         type: "TRANSFER",
+//         transactionRef: scannedData.transactionRef,
+//         requestRef: scannedData.requestRef,
+//         status: "PENDING",
+//         amount: Number(scannedData.amount),
+//         currency: scannedData.currency || "NGN",
+//         description: scannedData.description || `Payment to ${scannedData.receiverName}`,
+//         senderWalletId,
+//         senderPhone,
+//         senderName,
+//         receiverWalletId: scannedData.receiverWalletId,
+//         receiverPhone: scannedData.receiverPhone,
+//         receiverName: scannedData.receiverName,
+//         entryType: "DEBIT",
+//         createdAt: scannedData.createdAt,
+//       };
+
+//       await saveTransaction(senderTransaction);
+//       await updateTransactionStatus(scannedData.transactionRef, "SUCCESS");
+
+//       const newBalance = await calculateOfflineBalance();
+//       setOfflineBalance(newBalance);
+//       window.dispatchEvent(
+//         new CustomEvent("balance-updated", { detail: { balance: newBalance } })
+//       );
+
+//       navigate("/dashboard");
+//     } catch (err) {
+//       console.error("[SendMoney] Finalize debit error:", err);
+//       setErrorModal({
+//         show: true,
+//         message: err.message || "Could not complete the debit. Please try again.",
+//       });
+//     } finally {
+//       setIsFinalizing(false);
 //     }
 //   }
 
@@ -1425,44 +1447,118 @@ export default SendMoney;
 //                 style={{ marginTop: 20 }}
 //               >
 //                 {isSubmitting
-//                   ? "Processing..."
-//                   : `Send ₦${scannedData?.amount?.toLocaleString()}`}
+//                   ? "Verifying..."
+//                   : `Continue — Send ₦${scannedData?.amount?.toLocaleString()}`}
 //               </button>
 //             </form>
 //           </div>
 //         </div>
 //       )}
 
-//       {screen === "confirmation" && scannedData && transactionPayload && (
+//       {screen === "showQr" && scannedData && transactionPayload && (
+//         <div className="page-body">
+//           <div
+//             className="info-banner"
+//             style={{ background: "#FAEEDA", borderColor: "#F6C675", color: "#633806" }}
+//           >
+//             ⚠️ <strong>Do not tap the button below until the receiver has actually
+//             scanned this QR code.</strong> Nothing has been deducted from your
+//             wallet yet — this only happens after you confirm the handoff on the
+//             next screens.
+//           </div>
+
+//           <div className="qr-card">
+//             <span className="qr-label">Show this QR to the receiver</span>
+//             <div className="qr-amount">
+//               ₦{Number(scannedData.amount).toLocaleString()}
+//             </div>
+
+//             <div className="qr-box">
+//               <QRCodeSVG
+//                 value={JSON.stringify(transactionPayload)}
+//                 size={260}
+//                 bgColor="#FFFFFF"
+//                 fgColor="#111827"
+//                 level="M"
+//               />
+//             </div>
+
+//             <div className="qr-ref">{scannedData.transactionRef}</div>
+//           </div>
+
+//           <div className="btn-group">
+//             <button className="btn-primary" onClick={() => setScreen("confirmDetails")}>
+//               Receiver Has Scanned This QR
+//             </button>
+//           </div>
+//         </div>
+//       )}
+
+//       {screen === "confirmDetails" && scannedData && (
+//         <div className="page-body">
+//           <div className="info-banner">
+//             Please check every detail below carefully before confirming.
+//           </div>
+
+//           <div className="confirm-card">
+//             <div className="confirm-row">
+//               <span className="confirm-row-label">Sending to</span>
+//               <span className="confirm-row-value">{scannedData.receiverName}</span>
+//             </div>
+//             <div className="confirm-row">
+//               <span className="confirm-row-label">Receiver phone</span>
+//               <span className="confirm-row-value">{scannedData.receiverPhone}</span>
+//             </div>
+//             <div className="confirm-divider" />
+//             <div className="confirm-row">
+//               <span className="confirm-row-label">Amount</span>
+//               <span className="confirm-row-value">
+//                 ₦{Number(scannedData.amount).toLocaleString()}
+//               </span>
+//             </div>
+//             {scannedData.description && (
+//               <div className="confirm-row">
+//                 <span className="confirm-row-label">Description</span>
+//                 <span className="confirm-row-value">{scannedData.description}</span>
+//               </div>
+//             )}
+//             <div className="confirm-divider" />
+//             <div className="confirm-row">
+//               <span className="confirm-row-label">Sender</span>
+//               <span className="confirm-row-value">{senderName}</span>
+//             </div>
+//             <div className="confirm-row">
+//               <span className="confirm-row-label">Transaction ref</span>
+//               <span className="confirm-row-value confirm-row-ref">
+//                 {scannedData.transactionRef}
+//               </span>
+//             </div>
+//             <div className="confirm-row">
+//               <span className="confirm-row-label">Request ref</span>
+//               <span className="confirm-row-value confirm-row-ref">
+//                 {scannedData.requestRef}
+//               </span>
+//             </div>
+//           </div>
+
+//           <div className="btn-group">
+//             <button className="btn-primary" onClick={() => setScreen("success")}>
+//               Confirm Transaction Details
+//             </button>
+//           </div>
+//         </div>
+//       )}
+
+//       {screen === "success" && scannedData && transactionPayload && (
 //         <div className="page-body">
 //           <div className="confirm-sent-card">
 //             <div className="confirm-sent-icon">✅</div>
-//             <div className="confirm-sent-title">Payment Sent!</div>
+//             <div className="confirm-sent-title">Ready to Complete</div>
 //             <div className="confirm-sent-amount">
 //               ₦{Number(scannedData.amount).toLocaleString()}
 //             </div>
-//             <div className="confirm-sent-to">Sent to</div>
+//             <div className="confirm-sent-to">Sending to</div>
 //             <div className="confirm-sent-name">{scannedData.receiverName}</div>
-
-//             <div className="confirm-sent-divider" />
-
-//             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "16px 0" }}>
-//               <p style={{ fontSize: 12, color: "#6B7280", textAlign: "center", margin: 0 }}>
-//                 Show this QR to <strong>{scannedData.receiverName}</strong> to confirm receipt
-//               </p>
-//               <div style={{ background: "#fff", padding: 12, borderRadius: 8, border: "1px solid #E5E7EB" }}>
-//                 <QRCodeSVG
-//                   value={JSON.stringify(transactionPayload)}
-//                   size={260}
-//                   bgColor="#FFFFFF"
-//                   fgColor="#111827"
-//                   level="M"
-//                 />
-//               </div>
-//               <p style={{ fontSize: 10, color: "#9CA3AF", textAlign: "center", margin: 0 }}>
-//                 Receiver scans this to credit their wallet
-//               </p>
-//             </div>
 
 //             <div className="confirm-sent-divider" />
 
@@ -1490,16 +1586,18 @@ export default SendMoney;
 //                 })}
 //               </span>
 //             </div>
-//             <div className="confirm-sent-row">
-//               <span className="confirm-sent-row-label">Status</span>
-//               <span className="confirm-sent-row-value" style={{ color: "#BA7517" }}>
-//                 Pending sync
-//               </span>
-//             </div>
 //           </div>
 
-//           <button className="btn-primary" onClick={() => navigate("/dashboard")}>
-//             Done — Back to Dashboard
+//           <p style={{ fontSize: 12, color: "#6B7280", textAlign: "center", margin: 0 }}>
+//             Tapping below will mark this transaction as sent.
+//           </p>
+
+//           <button
+//             className="btn-primary"
+//             onClick={handleFinalizeDebit}
+//             disabled={isFinalizing}
+//           >
+//             {isFinalizing ? "Processing..." : "Done — Back to Dashboard"}
 //           </button>
 //         </div>
 //       )}
@@ -1524,4 +1622,3 @@ export default SendMoney;
 // }
 
 // export default SendMoney;
-
