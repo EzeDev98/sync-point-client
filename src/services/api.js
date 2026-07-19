@@ -1,6 +1,6 @@
 import { getValidToken } from "./token";
-const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:2000/api/v1";
-// const BASE_URL = "http://localhost:2000/api/v1";
+// const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:2000/api/v1";
+const BASE_URL = "http://localhost:2000/api/v1";
 import { readPersisted } from "./sessionUtils"; 
 
 function getPhoneNumber() {
@@ -105,6 +105,36 @@ export async function setWalletPin(pin, confirmNewPin) {
   const data = await response.json();
   if (!response.ok) {
     throw new Error(data.detail || data.message || "Failed to set PIN. Please try again.");
+  }
+  return data;
+}
+
+
+// ============================================
+// CHANGE PIN
+// ============================================
+export async function changeWalletPin(oldPin, pin, confirmNewPin) {
+  const phoneNumber = getPhoneNumber();
+  if (!phoneNumber) {
+    throw new Error("Phone number not found. Please log in again.");
+  }
+ 
+  const token = await getValidToken();
+  if (!token) {
+    throw new Error("No authentication token found. Please log in again.");
+  }
+ 
+  const response = await fetch(`${BASE_URL}/wallet/change-pin`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ phoneNumber, oldPin, pin, confirmNewPin }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.detail || data.message || "Failed to change PIN. Please try again.");
   }
   return data;
 }
@@ -279,3 +309,55 @@ export async function refreshToken() {
   return response.json();
 }
 
+// ============================================
+// PASSWORD RESET (Phone-number OTP)
+// ============================================
+
+export async function requestPasswordResetOtp(phoneNumber) {
+  const response = await fetch(`${BASE_URL}/password-reset/request`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phoneNumber }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    const errorMessage = data.detail || data.message || "Something went wrong. Please try again.";
+    const error = new Error(errorMessage);
+    error.status = response.status;
+    error.remainingSeconds = data.remainingSeconds;
+    throw error;
+  }
+  return data;
+}
+
+export async function verifyPasswordResetOtp(phoneNumber, otp) {
+  const response = await fetch(`${BASE_URL}/password-reset/verify-otp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ phoneNumber, otp }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    const errorMessage = data.detail || data.message || "The verification code is invalid.";
+    const error = new Error(errorMessage);
+    error.status = response.status;
+    throw error;
+  }
+  return data;
+}
+
+export async function completePasswordReset(resetToken, newPassword, confirmPassword) {
+  const response = await fetch(`${BASE_URL}/password-reset/complete`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ resetToken, newPassword, confirmPassword }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    const errorMessage = data.detail || data.message || "Something went wrong. Please try again.";
+    const error = new Error(errorMessage);
+    error.status = response.status;
+    throw error;
+  }
+  return data;
+}

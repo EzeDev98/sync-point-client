@@ -1,0 +1,47 @@
+/* ROUTE TRANSITIONS
+   Applied to every navigation across the app (login, logout, dashboard
+   actions, etc.) via the AnimatedRoutes wrapper in App.jsx. Keeps every
+   screen change to a short fade + slight vertical drift instead of a
+   hard cut, without depending on any animation library. */
+
+.route-transition-wrapper {
+  min-height: 100vh;
+}
+
+.route-transition-wrapper.route-enter {
+  animation: routeFadeIn 0.22s ease both;
+}
+
+.route-transition-wrapper.route-exit {
+  animation: routeFadeOut 0.16s ease both;
+}
+
+@keyframes routeFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes routeFadeOut {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+}
+
+/* Respect users who've asked for reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  .route-transition-wrapper.route-enter,
+  .route-transition-wrapper.route-exit {
+    animation: none;
+  }
+}

@@ -473,6 +473,129 @@ button:active {
 
 .logout-btn:hover { color: #DC2626; background: #FCEBEB; }
 
+/* SETTINGS TRIGGER */
+.settings-trigger-btn {
+  background: none;
+  border: none;
+  color: #9CA3AF;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 8px;
+  transition: color 0.15s, background 0.15s;
+  font-family: inherit;
+}
+
+.settings-trigger-btn:hover { color: #0F766E; background: #F0FBF9; }
+
+/* SETTINGS DRAWER */
+.settings-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(17, 24, 39, 0);
+  z-index: 200;
+  transition: background-color 0.25s ease;
+}
+
+.settings-drawer-overlay.visible {
+  background: rgba(17, 24, 39, 0.35);
+}
+
+/* Ensures any full-page confirmation modal (e.g. logout-blocked) always
+   renders above the settings drawer, even mid-close-transition. */
+.modal-overlay.logout-blocked-overlay {
+  z-index: 300;
+}
+
+.settings-drawer {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 70%;
+  max-width: 340px;
+  background: #FFFFFF;
+  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  transform: translateX(-100%);
+  transition: transform 0.25s ease;
+}
+
+.settings-drawer.visible {
+  transform: translateX(0);
+}
+
+.settings-drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid #E5E7EB;
+}
+
+.settings-drawer-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+  letter-spacing: -0.2px;
+}
+
+.settings-drawer-close {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: #F3F4F6;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6B7280;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.settings-drawer-close:hover { background: #E5E7EB; }
+
+.settings-drawer-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.settings-drawer-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 13px 12px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #111827;
+  cursor: pointer;
+  transition: background 0.15s;
+  font-family: inherit;
+}
+
+.settings-drawer-item:hover { background: #F8FAFA; }
+
+.settings-drawer-item-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.settings-drawer-item-danger { color: #DC2626; }
+.settings-drawer-item-danger:hover { background: #FCEBEB; }
+
 /* NOTIFICATIONS */
 .notif-wrapper { position: relative; }
 

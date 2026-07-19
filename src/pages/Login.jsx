@@ -24,12 +24,13 @@ function Login() {
   const [formData, setFormData] = useState({
     phoneNumber: "",
     password: "",
-    rememberMe: false,
+    rememberMe: true,
   });
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeSessionModal, setActiveSessionModal] = useState(false);
+  const [forgotPasswordModal, setForgotPasswordModal] = useState(false);
 
   useEffect(() => {
     async function checkUpdateThenSession() {
@@ -290,7 +291,14 @@ function Login() {
                 />
                 <span>Remember me</span>
               </label>
-              <Link to="/forgot-password" className="auth-link">Forgot password?</Link>
+              <button
+                type="button"
+                className="auth-link"
+                style={{ background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit" }}
+                onClick={() => navigate("/forgot-password")}
+              >
+                Forgot password?
+              </button>
             </div>
           </div>
 
@@ -332,6 +340,22 @@ function Login() {
             <h2 className="modal-title">Login Failed</h2>
             <p className="modal-body">{errorModal.message}</p>
             <button className="btn-primary" onClick={() => setErrorModal({ show: false, message: "" })}>
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
+      {forgotPasswordModal && (
+        <div className="modal-overlay">
+          <div className="modal-card">
+            <div className="modal-icon">🛠️</div>
+            <h2 className="modal-title">Not available yet</h2>
+            <p className="modal-body">
+              Password reset isn't set up yet. For now, please reach out to
+              support for help getting back into your account.
+            </p>
+            <button className="btn-primary" onClick={() => setForgotPasswordModal(false)}>
               OK
             </button>
           </div>
