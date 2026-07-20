@@ -46,7 +46,7 @@ function ReceivePayment() {
   const receiverPhone = localStorage.getItem("phoneNumber") || sessionStorage.getItem("phoneNumber");
   const firstName = localStorage.getItem("firstName") || sessionStorage.getItem("firstName") || "";
   const lastName = localStorage.getItem("lastName") || sessionStorage.getItem("lastName") || "";
-  const receiverName = `${firstName} ${lastName}`.trim() || "User";
+  const receiverName = `${firstName} ${lastName}`.replace(/\s+/g, " ").trim() || "User";
   const isSessionValid = !!receiverWalletId && !!receiverPhone;
 
   useEffect(() => {

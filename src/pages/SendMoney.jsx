@@ -35,7 +35,7 @@ function SendMoney() {
   const senderPhone = localStorage.getItem("phoneNumber") || sessionStorage.getItem("phoneNumber");
   const firstName = localStorage.getItem("firstName") || sessionStorage.getItem("firstName") || "";
   const lastName = localStorage.getItem("lastName") || sessionStorage.getItem("lastName") || "";
-  const senderName = `${firstName} ${lastName}`.trim() || "User";
+  const senderName = `${firstName} ${lastName}`.replace(/\s+/g, " ").trim() || "User";
 
   const isSessionValid = Boolean(senderWalletId && senderPhone);
   const MAX_OFFLINE_PENDING = 10;
@@ -512,9 +512,10 @@ function SendMoney() {
 
   function getInitials(name) {
     if (!name) return "??";
-    const parts = name.trim().split(" ");
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return "??";
     return parts.length >= 2
-      ? parts[0][0].toUpperCase() + parts[1][0].toUpperCase()
+      ? (parts[0][0] + parts[1][0]).toUpperCase()
       : parts[0][0].toUpperCase();
   }
 
