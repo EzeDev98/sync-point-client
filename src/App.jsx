@@ -25,7 +25,7 @@ import { syncPendingTransactionsGuarded } from "./services/syncService";
 import ForgotPin from "./pages/ForgotPin";
 import VerifyPinResetOtp from "./pages/VerifyPinResetOtp";
 import CreateNewPin from "./pages/CreateNewPin";
-import "./styles/transitions.css";
+import "./styles/Transitions.css";
 
 const PERIODIC_SYNC_MS = 10 * 60 * 1000;
 const MAX_OFFLINE_PENDING = 10;
