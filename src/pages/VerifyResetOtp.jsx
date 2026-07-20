@@ -7,7 +7,7 @@ import {
   hasRequestedOtp,
   maskPhoneNumber,
   setResetToken,
-} from "../services/passwordResetState";
+} from "../services/PasswordResetState";
 import "../styles/auth.css";
 
 const RESEND_COOLDOWN_SECONDS = 60;

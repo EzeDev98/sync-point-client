@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { requestPinResetOtp, verifyPinResetOtp } from "../services/api";
 import { readPersisted } from "../services/sessionUtils";
 import { useNetwork } from "../hooks/useNetwork";
-import { hasRequestedOtp, setPinResetToken } from "../services/pinResetState";
+import { hasRequestedOtp, setPinResetToken } from "../services/PinResetState";
 import "../styles/auth.css";
 
 const RESEND_COOLDOWN_SECONDS = 60;

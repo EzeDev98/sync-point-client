@@ -4,7 +4,7 @@ import { requestPinResetOtp } from "../services/api";
 import { readPersisted } from "../services/sessionUtils";
 import { getPendingCount } from "../services/indexedDbService";
 import { useNetwork } from "../hooks/useNetwork";
-import { markOtpRequested } from "../services/pinResetState";
+import { markOtpRequested } from "../services/PinResetState";
 import "../styles/auth.css";
 
 function maskPhoneNumber(phoneNumber) {

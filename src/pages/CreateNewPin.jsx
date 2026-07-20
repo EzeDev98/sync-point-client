@@ -4,7 +4,7 @@ import { completePinReset } from "../services/api";
 import { useNetwork } from "../hooks/useNetwork";
 import { saveOfflinePinVerifier } from "../services/savePinVerifier.js";
 import { initializeEncryption } from "../services/cryptoService";
-import { clearPinResetState, getPinResetToken, hasPinResetToken } from "../services/pinResetState";
+import { clearPinResetState, getPinResetToken, hasPinResetToken } from "../services/PinResetState";
 import "../styles/auth.css";
 
 function CreateNewPin() {

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { requestPasswordResetOtp } from "../services/api";
 import { useNetwork } from "../hooks/useNetwork";
-import { setPhoneNumber as savePhoneNumber } from "../services/passwordResetState";
+import { setPhoneNumber as savePhoneNumber } from "../services/PasswordResetState";
 import "../styles/auth.css";
 
 function ForgotPassword() {

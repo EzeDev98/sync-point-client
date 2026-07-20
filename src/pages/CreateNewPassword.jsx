@@ -2,11 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { completePasswordReset } from "../services/api";
 import { useNetwork } from "../hooks/useNetwork";
-import {
-  clearPasswordResetState,
-  getResetToken,
-  hasResetToken,
-} from "../services/passwordResetState";
+import { clearPasswordResetState, getResetToken, hasResetToken, } from "../services/PasswordResetState";
 import "../styles/auth.css";
 
 function CreateNewPassword() {
