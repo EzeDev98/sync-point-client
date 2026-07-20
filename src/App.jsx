@@ -22,6 +22,9 @@ import SendMoney from "./pages/SendMoney";
 import Offline from "./pages/Offline";
 import { getPendingCount } from "./services/indexedDbService";
 import { syncPendingTransactionsGuarded } from "./services/syncService";
+import ForgotPin from "./pages/ForgotPin";
+import VerifyPinResetOtp from "./pages/VerifyPinResetOtp";
+import CreateNewPin from "./pages/CreateNewPin";
 import "./styles/transitions.css";
 
 const PERIODIC_SYNC_MS = 10 * 60 * 1000;
@@ -198,6 +201,10 @@ function App() {
             <Route path="/fund" element={<InstallGuard><RequireUnlock><FundWallet /></RequireUnlock></InstallGuard>} />
             <Route path="/receive" element={<InstallGuard><RequireUnlock><ReceivePayment /></RequireUnlock></InstallGuard>} />
             <Route path="/send" element={<InstallGuard><RequireUnlock><SendMoney /></RequireUnlock></InstallGuard>} />
+            <Route path="/verifypin" element={<InstallGuard><PinVerification /></InstallGuard>} />
+            <Route path="/forgot-pin" element={<InstallGuard><ForgotPin /></InstallGuard>} />
+            <Route path="/forgot-pin/verify" element={<InstallGuard><VerifyPinResetOtp /></InstallGuard>} />
+            <Route path="/forgot-pin/reset" element={<InstallGuard><CreateNewPin /></InstallGuard>} />
 
             {/* Catch-all */}
             <Route path="*" element={<Navigate to="/" replace />} />

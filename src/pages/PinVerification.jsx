@@ -229,6 +229,17 @@ function PinVerification() {
             {isSubmitting ? "Unlocking..." : "Unlock Wallet"}
           </button>
         </form>
+
+        <div className="auth-links">
+          <button
+            type="button"
+            className="auth-link"
+            style={{ background: "none", border: "none", padding: 0, cursor: "pointer", font: "inherit" }}
+            onClick={() => navigate("/forgot-pin")}
+          >
+            Forgot PIN?
+          </button>
+        </div>
       </div>
 
       {isRestoringTransactions && (

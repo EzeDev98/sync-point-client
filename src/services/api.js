@@ -361,3 +361,76 @@ export async function completePasswordReset(resetToken, newPassword, confirmPass
   }
   return data;
 }
+
+export async function requestPinResetOtp(phoneNumber) {
+  const token = await getValidToken();
+  if (!token) {
+    throw new Error("No authentication token found. Please log in again.");
+  }
+
+  const response = await fetch(`${BASE_URL}/pin-reset/request`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ phoneNumber }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    const errorMessage = data.detail || data.message || "Something went wrong. Please try again.";
+    const error = new Error(errorMessage);
+    error.status = response.status;
+    error.remainingSeconds = data.remainingSeconds;
+    throw error;
+  }
+  return data;
+}
+
+export async function verifyPinResetOtp(phoneNumber, otp) {
+  const token = await getValidToken();
+  if (!token) {
+    throw new Error("No authentication token found. Please log in again.");
+  }
+
+  const response = await fetch(`${BASE_URL}/pin-reset/verify-otp`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ phoneNumber, otp }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    const errorMessage = data.detail || data.message || "The verification code is invalid.";
+    const error = new Error(errorMessage);
+    error.status = response.status;
+    throw error;
+  }
+  return data;
+}
+
+export async function completePinReset(resetToken, pin, confirmNewPin) {
+  const token = await getValidToken();
+  if (!token) {
+    throw new Error("No authentication token found. Please log in again.");
+  }
+
+  const response = await fetch(`${BASE_URL}/pin-reset/complete`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ resetToken, pin, confirmNewPin }),
+  });
+  const data = await response.json();
+  if (!response.ok) {
+    const errorMessage = data.detail || data.message || "Something went wrong. Please try again.";
+    const error = new Error(errorMessage);
+    error.status = response.status;
+    throw error;
+  }
+  return data;
+}

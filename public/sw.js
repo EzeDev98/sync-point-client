@@ -30,7 +30,6 @@ const STATIC_ASSETS = [
 const API_CACHE_NAME = `syncpoint-api-${CACHE_VERSION}`;
 const API_ENDPOINTS = [
   '/api/v1/wallet/balance',
-  '/api/v1/wallet/has-pin',
 ];
 
 // The API server can run on a different origin/port than the client dev
