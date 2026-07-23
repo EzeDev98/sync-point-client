@@ -1,0 +1,54 @@
+/* Horizontal step slider — one viewport-width track that shifts by 100% */
+.slider {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.track {
+  display: flex;
+  transform: translateX(0);
+  transition: transform 0.9s cubic-bezier(0.2, 0.9, 0.4, 1.1);
+}
+
+.trackStepTwo {
+  transform: translateX(-100%);
+}
+
+.step {
+  flex: 0 0 100%;
+  width: 100%;
+}
+
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+.row {
+  display: flex;
+  gap: var(--space-12);
+}
+
+.row > * {
+  flex: 1;
+  min-width: 0;
+}
+
+@media (max-width: 480px) {
+  /* Name fields stack, but gender and date of birth stay side by side */
+  .row {
+    flex-direction: column;
+  }
+
+  .row:last-of-type {
+    flex-direction: row;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .track {
+    transition: none;
+  }
+}

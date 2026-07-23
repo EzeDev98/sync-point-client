@@ -1,12 +1,22 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import DeviceGate from './pages/DeviceGate'
-import './index.css'
-import App from './App.jsx'
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+
+// Global stylesheet chain — order is significant.
+//   tokens → every custom property the rest of the CSS depends on
+//   reset  → normalisation, must land before any element defaults
+//   base   → element defaults expressed in tokens
+// Component styling lives in co-located *.module.css files, never here.
+import './styles/tokens.css';
+import './styles/reset.css';
+import './styles/base.css';
+
+import DeviceGate from './features/device/pages/DeviceGate';
+import App from './app/App.jsx';
 
 // Capture beforeinstallprompt as early as possible — before any component
 // mounts. InstallPage reads from window.__installPrompt when it's ready.
 window.__installPrompt = null;
+
 window.addEventListener('beforeinstallprompt', (e) => {
   e.preventDefault(); // suppress the browser's default mini-infobar
   window.__installPrompt = e;
@@ -18,20 +28,17 @@ window.addEventListener('appinstalled', () => {
   console.log('[main] appinstalled — flag set');
 });
 
-// ============================================
-// SERVICE WORKER REGISTRATION (was missing)
-// ============================================
-// sw.js was being built correctly (BUILD_ID stamped, precache list, fetch
-// handlers all present) but nothing in the app ever called
-// navigator.serviceWorker.register(...). Without registration the SW never
-// installs or activates, so it never controls navigations. That's why a
-// hard refresh on a deep route (e.g. /dashboard) while offline had nothing
-// to intercept the request — the browser sent it straight to the network,
-// it failed with net::ERR_INTERNET_DISCONNECTED, and Chrome fell back to
-// its own built-in offline screen for installed PWAs instead of your app.
+// Service worker registration.
 //
-// Registered on 'load' (not immediately) so it never competes with or
-// delays the initial page render/paint.
+// sw.js is built correctly (BUILD_ID stamped, precache list, fetch handlers)
+// but nothing registers it unless this runs, and an unregistered worker never
+// activates or controls navigations. Without it, a hard refresh on a deep
+// route while offline has nothing to intercept the request: it goes straight
+// to the network, fails, and Chrome shows its own offline screen instead of
+// ours.
+//
+// Registered on 'load' rather than immediately so it never competes with the
+// initial render.
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
@@ -51,4 +58,4 @@ createRoot(document.getElementById('root')).render(
       <App />
     </DeviceGate>
   </StrictMode>,
-)
+);

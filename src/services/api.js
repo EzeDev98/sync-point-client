@@ -224,32 +224,49 @@ export async function transferToOnline({ amount, description, transactionPin, re
 // ============================================
 // VERIFY WALLET PIN 
 // ============================================
+// export async function verifyWalletPin(walletId, pin) {
+//   const token = await getValidToken();
+//   if (!token) {
+//     throw new Error("No authentication token found. Please log in again.");
+//   }
+
+//   const response = await fetch(
+//     `${BASE_URL}/wallet/verify/pin?walletId=${walletId}&unverifiedPin=${pin}`,
+//     {
+//       method: "GET",
+//       headers: {
+//         "Content-Type": "application/json",
+//         Authorization: `Bearer ${token}`,
+//       },
+//     }
+//   );
+  
+//   const data = await response.json();
+  
+//   if (!response.ok) {
+//     const errorMessage = data.detail || data.message || "PIN verification failed";
+//     throw new Error(errorMessage);
+//   }
+  
+//   return data;
+// }
+
 export async function verifyWalletPin(walletId, pin) {
   const token = await getValidToken();
   if (!token) {
     throw new Error("No authentication token found. Please log in again.");
   }
 
-  const response = await fetch(
-    `${BASE_URL}/wallet/verify/pin?walletId=${walletId}&unverifiedPin=${pin}`,
+  const response = await fetch(`${BASE_URL}/wallet/verify/pin`,
     {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${token}`,
       },
+      body: JSON.stringify({ walletId, unverifiedPin: pin }),
     }
   );
-  
-  const data = await response.json();
-  
-  if (!response.ok) {
-    const errorMessage = data.detail || data.message || "PIN verification failed";
-    throw new Error(errorMessage);
-  }
-  
-  return data;
-}
 
 // ============================================
 // SYNC OFFLINE TRANSACTIONS 

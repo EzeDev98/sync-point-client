@@ -1,0 +1,95 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.label {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.inputWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+/* Wide tracking and centred digits — the treatment every PIN input used */
+.input {
+  width: 100%;
+  height: var(--input-height);
+  padding: 0 56px 0 var(--space-14);
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-medium);
+  font-family: inherit;
+  letter-spacing: 0.4em;
+  text-align: center;
+  color: var(--color-text-primary);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-input);
+  outline: none;
+  transition: border-color var(--duration-fast) var(--easing-standard),
+    box-shadow var(--duration-fast) var(--easing-standard);
+}
+
+.input::placeholder {
+  font-size: var(--font-size-lg);
+  letter-spacing: 0.3em;
+  color: var(--color-text-muted);
+}
+
+.input:focus {
+  border-color: var(--color-accent);
+  box-shadow: var(--ring-accent);
+}
+
+.inputError {
+  border-color: var(--color-error);
+}
+
+.inputError:focus {
+  box-shadow: var(--ring-error);
+}
+
+.revealToggle {
+  position: absolute;
+  right: var(--space-12);
+  display: flex;
+  align-items: center;
+  padding: var(--space-4);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  font-family: inherit;
+  color: var(--color-text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: var(--transition-color);
+}
+
+.revealToggle:hover:not(:disabled) {
+  color: var(--color-text-primary);
+}
+
+/* Reserved message line — keeps the form from shifting when an error appears */
+.hint,
+.error {
+  margin: 0;
+  min-height: 16px;
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-snug);
+  text-align: center;
+  transition: var(--transition-color);
+}
+
+.hint {
+  color: var(--color-text-muted);
+}
+
+.error {
+  color: var(--color-error);
+}

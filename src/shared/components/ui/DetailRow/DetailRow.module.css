@@ -1,0 +1,35 @@
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: var(--space-12);
+}
+
+.sizeSm {
+  font-size: var(--font-size-xs);
+}
+
+.sizeMd {
+  font-size: var(--font-size-sm);
+}
+
+.label {
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+}
+
+.value {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  text-align: right;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.mono {
+  font-family: var(--font-family-mono);
+  font-size: var(--font-size-3xs);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-secondary);
+}

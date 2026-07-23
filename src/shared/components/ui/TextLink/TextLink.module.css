@@ -1,0 +1,20 @@
+.link {
+  padding: 0;
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  font-weight: inherit;
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.link:hover:not(:disabled) {
+  text-decoration: underline;
+}
+
+.link:disabled {
+  color: var(--color-disabled-text);
+  cursor: not-allowed;
+}

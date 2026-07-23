@@ -2,8 +2,11 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { writeFileSync, readFileSync, readdirSync, mkdirSync } from "fs";
 import { resolve } from "path";
+import { fileURLToPath } from "url";
 
 const BUILD_ID = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const srcPath = fileURLToPath(new URL("./src", import.meta.url));
 
 function versionManifestPlugin() {
   return {
@@ -67,5 +70,18 @@ export default defineConfig({
   plugins: [react(), versionManifestPlugin()],
   define: {
     __APP_BUILD_ID__: JSON.stringify(BUILD_ID),
+  },
+  // Path aliases. Without these the feature-first tree produces imports like
+  // "../../../../shared/components/ui", which break on every file move.
+  // Keep this list in sync with jsconfig.json so the editor resolves them too.
+  resolve: {
+    alias: {
+      "@": srcPath,
+      "@app": resolve(srcPath, "app"),
+      "@features": resolve(srcPath, "features"),
+      "@core": resolve(srcPath, "core"),
+      "@shared": resolve(srcPath, "shared"),
+      "@styles": resolve(srcPath, "styles"),
+    },
   },
 });

@@ -1,0 +1,74 @@
+.indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: var(--space-24);
+  margin-bottom: var(--space-8);
+}
+
+.segment {
+  display: flex;
+  align-items: center;
+}
+
+.line {
+  width: 60px;
+  height: 2px;
+  margin: 0 var(--space-12) var(--space-24);
+  background: var(--color-border);
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.number {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  background: var(--color-bg);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-circle);
+  transition: all var(--duration-slow) var(--easing-standard);
+}
+
+.label {
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.active .number,
+.complete .number {
+  color: var(--color-accent-on);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.active .label {
+  color: var(--color-accent);
+}
+
+@media (max-width: 480px) {
+  .line {
+    width: 40px;
+  }
+
+  .number {
+    width: 28px;
+    height: 28px;
+    font-size: var(--font-size-xs);
+  }
+
+  .label {
+    font-size: var(--font-size-3xs);
+  }
+}

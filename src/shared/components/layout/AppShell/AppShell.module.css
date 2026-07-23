@@ -1,0 +1,37 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100svh;
+  max-width: var(--app-max-width);
+  margin: 0 auto;
+  padding-bottom: var(--space-40);
+  background: var(--color-bg);
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: var(--z-header);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-18) var(--space-20) var(--space-12);
+  background: var(--color-bg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.body {
+  flex: 1;
+  min-height: 0;
+  padding: 0 var(--space-20);
+}
+
+@media (max-width: 480px) {
+  .header {
+    padding: var(--space-16) var(--space-16) var(--space-10);
+  }
+
+  .body {
+    padding: 0 var(--space-16);
+  }
+}
