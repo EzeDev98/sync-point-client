@@ -1,31 +1,29 @@
+/*
+  A row, nothing more.
+  Sticky positioning, padding, background and the bottom border all come
+  from AppShell's header slot, which this always renders inside.
+*/
 .header {
-  position: sticky;
-  top: 0;
-  z-index: var(--z-header);
   display: flex;
+  flex: 1;
   align-items: center;
   gap: var(--space-12);
-  padding: var(--space-18) var(--space-20) var(--space-14);
-  background: var(--color-bg);
-  border-bottom: 1px solid var(--color-border);
+  min-width: 0;
 }
 
 .title {
+  overflow: hidden;
   font-size: var(--font-size-md);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
+  text-overflow: ellipsis;
+  white-space: nowrap;
   transition: opacity var(--duration-base) var(--easing-standard);
 }
 
 .trailing {
-  margin-left: auto;
   display: flex;
   align-items: center;
   gap: var(--space-8);
-}
-
-@media (max-width: 480px) {
-  .header {
-    padding: var(--space-16) var(--space-16) var(--space-12);
-  }
+  margin-left: auto;
 }

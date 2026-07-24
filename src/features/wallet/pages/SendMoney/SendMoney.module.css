@@ -1,0 +1,239 @@
+/*
+  Reproduces the original .page-body: grows to fill the shell and centres its
+  content vertically, so a short screen sits in the middle of the viewport
+  rather than pinned under the header.
+*/
+.body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-20);
+  min-height: 0;
+  padding: var(--space-24) 0;
+}
+
+.divider {
+  width: 100%;
+  height: 1px;
+  background: var(--color-border);
+}
+
+/* --- Review step ------------------------------------------------------ */
+
+.reviewCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  padding: var(--space-18);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2xl);
+}
+
+.reviewAmountRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-12);
+}
+
+.reviewLabel {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.reviewAmount {
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.5px;
+  color: var(--color-text-primary);
+}
+
+.balanceOk {
+  color: var(--color-accent);
+}
+
+.balanceShort {
+  color: var(--color-error);
+}
+
+/* --- PIN step --------------------------------------------------------- */
+
+.pinScreen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100svh - var(--header-height));
+  padding: var(--space-24) var(--space-20);
+}
+
+.pinInner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-24);
+  width: 100%;
+  max-width: 340px;
+}
+
+.pinHeader {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-8);
+  text-align: center;
+}
+
+.pinIcon {
+  font-size: var(--font-size-6xl);
+  line-height: 1;
+}
+
+.pinTitle {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.pinSubtitle {
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-secondary);
+}
+
+.pinSubmit {
+  margin-top: var(--space-20);
+}
+
+/* --- Confirm step ----------------------------------------------------- */
+
+.confirmList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-10);
+}
+
+/* --- Complete step ---------------------------------------------------- */
+
+.completeScreen {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-16);
+  width: 100%;
+  max-width: 380px;
+  min-height: 0;
+  margin: 0 auto;
+  padding: var(--space-24) var(--space-20);
+  text-align: center;
+}
+
+.completeCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-10);
+  width: 100%;
+  padding: var(--space-28) var(--space-20);
+  text-align: center;
+  background: var(--color-accent-faint);
+  border: 1px solid var(--teal-300);
+  border-radius: var(--radius-2xl);
+}
+
+.completeIcon {
+  font-size: 44px;
+  line-height: 1;
+}
+
+.completeTitle {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-success-text);
+}
+
+.completeAmount {
+  margin: var(--space-4) 0;
+  font-size: var(--font-size-5xl);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -1px;
+  color: var(--color-accent);
+}
+
+.completeTo {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.completeName {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.completeDivider {
+  width: 100%;
+  height: 1px;
+  margin: var(--space-6) 0;
+  background: var(--teal-300);
+}
+
+.completeRows {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  width: 100%;
+}
+
+.completeNote {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.completeCta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+  width: 100%;
+}
+
+.ctaArrow {
+  flex-shrink: 0;
+  animation: nudgeRight 1.4s ease-in-out infinite;
+}
+
+@keyframes nudgeRight {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(4px);
+  }
+}
+
+@media (max-width: 480px) {
+  .body {
+    gap: var(--space-16);
+    padding: var(--space-20) 0;
+  }
+
+  .reviewAmount {
+    font-size: var(--font-size-2xl);
+  }
+
+  .completeAmount {
+    font-size: var(--font-size-4xl);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ctaArrow {
+    animation: none;
+  }
+}

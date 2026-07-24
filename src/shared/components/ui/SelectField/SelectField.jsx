@@ -1,8 +1,8 @@
-import { useId } from 'react';
+import FormField from '../FormField/FormField.jsx';
 import styles from './SelectField.module.css';
 
 /**
- * Select counterpart to TextField, sharing its label / hint / error anatomy.
+ * Select counterpart to TextField, sharing FormField's anatomy.
  *
  * Options are passed as data rather than as children so every call site
  * renders them identically:
@@ -24,55 +24,42 @@ function SelectField({
   className = '',
   ...rest
 }) {
-  const generatedId = useId();
-  const fieldId = id ?? name ?? generatedId;
-  const messageId = `${fieldId}-message`;
-
-  const message = error || hint;
-  const hasError = Boolean(error);
-
   return (
-    <div className={[styles.field, className].filter(Boolean).join(' ')}>
-      {label && (
-        <label className={styles.label} htmlFor={fieldId}>
-          {label}
-          {optional && <span className={styles.optional}>Optional</span>}
-        </label>
-      )}
-
-      <select
-        id={fieldId}
-        name={name}
-        className={[styles.select, hasError ? styles.selectError : ''].filter(Boolean).join(' ')}
-        value={value}
-        onChange={onChange}
-        disabled={disabled}
-        aria-invalid={hasError || undefined}
-        aria-describedby={message ? messageId : undefined}
-        {...rest}
-      >
-        {placeholder && (
-          <option value="" disabled>
-            {placeholder}
-          </option>
-        )}
-        {options.map((option) => (
-          <option key={option.value} value={option.value}>
-            {option.label}
-          </option>
-        ))}
-      </select>
-
-      {(message || reserveMessageSpace) && (
-        <p
-          id={messageId}
-          className={hasError ? styles.error : styles.hint}
-          role={hasError ? 'alert' : undefined}
+    <FormField
+      label={label}
+      optional={optional}
+      error={error}
+      hint={hint}
+      id={id}
+      name={name}
+      reserveMessageSpace={reserveMessageSpace}
+      className={className}
+    >
+      {({ fieldId, messageId, hasError }) => (
+        <select
+          id={fieldId}
+          name={name}
+          className={[styles.select, hasError ? styles.selectError : ''].filter(Boolean).join(' ')}
+          value={value}
+          onChange={onChange}
+          disabled={disabled}
+          aria-invalid={hasError || undefined}
+          aria-describedby={messageId}
+          {...rest}
         >
-          {message}
-        </p>
+          {placeholder && (
+            <option value="" disabled>
+              {placeholder}
+            </option>
+          )}
+          {options.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
       )}
-    </div>
+    </FormField>
   );
 }
 

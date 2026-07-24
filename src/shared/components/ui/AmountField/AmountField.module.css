@@ -1,0 +1,59 @@
+.wrapper {
+  position: relative;
+}
+
+.symbol {
+  position: absolute;
+  top: 50%;
+  left: var(--space-14);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.input {
+  width: 100%;
+  height: var(--input-height);
+  padding-left: 36px;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+  font-family: inherit;
+  letter-spacing: var(--letter-spacing-tight);
+  color: var(--color-text-primary);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-input);
+  outline: none;
+  transition: border-color var(--duration-fast) var(--easing-standard),
+    box-shadow var(--duration-fast) var(--easing-standard);
+}
+
+/*
+  Focus shows as the soft ring only — no border-colour change.
+  A teal border reads as an outline against the resting grey one, which is
+  the effect this deliberately avoids.
+*/
+.input:focus {
+  box-shadow: var(--ring-accent);
+}
+
+.input:disabled {
+  background: var(--color-disabled-bg);
+  color: var(--color-disabled-text);
+}
+
+.inputError {
+  border-color: var(--color-error);
+}
+
+.inputError:focus {
+  box-shadow: var(--ring-error);
+}
+
+@media (max-width: 480px) {
+  .input {
+    font-size: var(--font-size-xl);
+  }
+}

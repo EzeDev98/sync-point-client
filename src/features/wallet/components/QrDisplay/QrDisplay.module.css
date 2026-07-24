@@ -1,0 +1,74 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-14);
+  padding: var(--space-24) var(--space-20);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2xl);
+}
+
+.label {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.amount {
+  font-size: var(--font-size-4xl);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.5px;
+  color: var(--color-accent);
+}
+
+.box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 350px;
+  height: 350px;
+  padding: var(--space-12);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+}
+
+.expired {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-8);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-error);
+  text-align: center;
+}
+
+.expired span {
+  font-size: var(--font-size-5xl);
+  line-height: 1;
+}
+
+.reference {
+  padding: var(--space-6) var(--space-12);
+  font-size: var(--font-size-2xs);
+  font-family: var(--font-family-mono);
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+}
+
+@media (max-width: 480px) {
+  .box {
+    width: 260px;
+    height: 260px;
+  }
+
+  .amount {
+    font-size: var(--font-size-4xl);
+  }
+}

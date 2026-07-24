@@ -1,0 +1,110 @@
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.brandText {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: var(--letter-spacing-tight);
+  color: var(--color-text-primary);
+}
+
+.greeting {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  padding: var(--space-18) 0 var(--space-14);
+}
+
+.avatar {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-accent);
+  background: var(--color-accent-subtle);
+  border: 1.5px solid var(--teal-300);
+  border-radius: var(--radius-circle);
+}
+
+.greetingText {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-light);
+  line-height: var(--line-height-tight);
+  color: var(--color-text-primary);
+}
+
+/* Reserved height — prevents the page shifting when a sync message appears */
+.syncResult {
+  min-height: 36px;
+  margin-top: var(--space-10);
+}
+
+.syncResultMessage {
+  margin: 0;
+  padding: var(--space-6) var(--space-10);
+  font-size: var(--font-size-2xs);
+  text-align: center;
+  border-radius: var(--radius-md);
+}
+
+.syncResultSuccess {
+  color: var(--color-success-text);
+  background: var(--color-success-bg);
+}
+
+.syncResultError {
+  color: var(--color-error);
+  background: var(--color-error-bg);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-12);
+}
+
+.sectionTitle {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.seeAll {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  font-family: inherit;
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.settingsTrigger {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-8) var(--space-16);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  font-family: inherit;
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: color var(--duration-fast) var(--easing-standard),
+    background var(--duration-fast) var(--easing-standard);
+}
+
+.settingsTrigger:hover {
+  color: var(--color-accent);
+  background: var(--color-accent-wash);
+}

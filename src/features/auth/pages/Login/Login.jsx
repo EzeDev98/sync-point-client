@@ -18,7 +18,7 @@ import { refreshOnStartup } from '@features/auth/services/tokenStore';
 import { restoreQuarantineIfPresent } from '@features/device/services/quarantineService';
 import { performHardReset } from '@features/device/services/hardReset';
 import { checkForUpdate } from '@features/device/services/versionService';
-import AuthLayout from '@features/auth/components/AuthLayout/AuthLayout.jsx';
+import { FormScreen } from '@shared/components/layout';
 import { collectErrors, validatePhoneNumber } from '@features/auth/utils/authValidation';
 import styles from './Login.module.css';
 
@@ -200,24 +200,24 @@ function Login() {
 
   if (isCheckingSession) {
     return (
-      <AuthLayout>
+      <FormScreen>
         <p className={styles.checkingSession}>Checking session...</p>
-      </AuthLayout>
+      </FormScreen>
     );
   }
 
   // A mandatory update takes over the screen entirely — there is no "Later".
   if (updateInfo.show) {
     return (
-      <AuthLayout>
+      <FormScreen>
         <UpdateModal onUpdate={handleUpdateNow} isUpdating={isUpdating} mandatory />
-      </AuthLayout>
+      </FormScreen>
     );
   }
 
   return (
     <>
-      <AuthLayout
+      <FormScreen
         title="Welcome back"
         subtitle="Sign in to your account"
         onSubmit={handleSubmit}
@@ -271,7 +271,7 @@ function Login() {
         <Button type="submit" loading={isSubmitting} loadingLabel="Signing in...">
           Sign in
         </Button>
-      </AuthLayout>
+      </FormScreen>
 
       <Modal
         open={dialog?.kind === 'pinRequired'}

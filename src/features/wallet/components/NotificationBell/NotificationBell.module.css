@@ -1,0 +1,209 @@
+.wrapper {
+  position: relative;
+}
+
+.bellButton {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: var(--color-text-secondary);
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-circle);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--easing-standard);
+}
+
+.bellButton:hover {
+  background: var(--color-surface);
+}
+
+.unreadDot {
+  position: absolute;
+  top: 6px;
+  right: 7px;
+  width: 7px;
+  height: 7px;
+  background: var(--color-accent);
+  border: 1.5px solid var(--color-bg);
+  border-radius: var(--radius-circle);
+}
+
+.dropdown {
+  position: absolute;
+  top: calc(100% + var(--space-10));
+  right: 0;
+  z-index: var(--z-drawer);
+  width: 300px;
+  overflow: hidden;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-lg);
+  animation: dropIn var(--duration-base) var(--easing-standard);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-14) var(--space-16) var(--space-10);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.headerTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.count {
+  padding: var(--space-2) var(--space-6);
+  font-size: var(--font-size-3xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-accent-on);
+  background: var(--color-accent);
+  border-radius: var(--radius-4xl);
+}
+
+.markAllButton {
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-medium);
+  font-family: inherit;
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.markAllButton:hover {
+  color: var(--color-accent-hover);
+}
+
+.list {
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.empty {
+  padding: var(--space-24) var(--space-16);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-12);
+  width: 100%;
+  padding: var(--space-12) var(--space-16);
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--color-surface-sunken);
+  cursor: pointer;
+  transition: background var(--duration-fast) var(--easing-standard);
+}
+
+.item:last-child {
+  border-bottom: none;
+}
+
+.item:hover {
+  background: var(--color-surface);
+}
+
+.itemUnread {
+  background: var(--color-accent-faint);
+}
+
+.itemUnread:hover {
+  background: var(--color-accent-subtle);
+}
+
+.itemIcon {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  font-size: var(--font-size-lg);
+  border-radius: var(--radius-lg);
+}
+
+.success {
+  background: var(--color-success-bg);
+}
+
+.warning {
+  background: var(--color-warning-bg);
+}
+
+.error {
+  background: var(--color-error-bg);
+}
+
+.info {
+  background: var(--color-info-bg);
+}
+
+.itemContent {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.itemTitle {
+  margin-bottom: 3px;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  line-height: var(--line-height-snug);
+  color: var(--color-text-primary);
+}
+
+.itemDesc {
+  font-size: var(--font-size-2xs);
+  line-height: var(--line-height-snug);
+  color: var(--color-text-secondary);
+}
+
+.itemTime {
+  margin-top: var(--space-4);
+  font-size: var(--font-size-3xs);
+  color: var(--color-text-muted);
+}
+
+.itemDot {
+  flex-shrink: 0;
+  width: 7px;
+  height: 7px;
+  margin-top: var(--space-4);
+  background: var(--color-accent);
+  border-radius: var(--radius-circle);
+}
+
+@keyframes dropIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dropdown {
+    animation: none;
+  }
+}

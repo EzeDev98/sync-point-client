@@ -1,0 +1,9 @@
+/*
+  Targets the input via :global because it is rendered inside TextField,
+  whose own class names are scoped to its module.
+*/
+.otpField :global(input) {
+  font-size: var(--font-size-2xl);
+  letter-spacing: 0.4em;
+  text-align: center;
+}

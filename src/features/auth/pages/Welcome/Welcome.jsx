@@ -32,7 +32,6 @@ function Welcome() {
   return (
     <div className={styles.screen}>
       <div className={styles.branding}>
-        <AppLogo size={80} />
         <h1 className={styles.title}>SyncPoint</h1>
         <p className={styles.description}>
           Offline-first peer-to-peer payments. Send and receive money without internet.

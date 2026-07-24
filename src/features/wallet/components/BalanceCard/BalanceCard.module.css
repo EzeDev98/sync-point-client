@@ -1,0 +1,139 @@
+.card {
+  margin-bottom: var(--space-18);
+  padding: var(--space-16) var(--space-18);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2xl);
+}
+
+.inner {
+  display: grid;
+  grid-template-columns: 1fr 1px 1fr;
+  align-items: center;
+  gap: var(--space-18);
+}
+
+.left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.label {
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.amountRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+}
+
+.amount {
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  letter-spacing: var(--letter-spacing-tight);
+  color: var(--color-text-primary);
+}
+
+.amountHidden {
+  font-size: var(--font-size-xl);
+  letter-spacing: 3px;
+  color: var(--color-text-secondary);
+}
+
+.eyeButton {
+  display: flex;
+  align-items: center;
+  padding: var(--space-2);
+  color: var(--color-text-secondary);
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: var(--transition-color);
+}
+
+.eyeButton:hover {
+  color: var(--color-text-primary);
+}
+
+.divider {
+  align-self: stretch;
+  flex-shrink: 0;
+  width: 1px;
+  height: 100%;
+  background: var(--color-border);
+}
+
+.right {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: var(--space-12);
+  min-width: 0;
+}
+
+.sub {
+  font-size: var(--font-size-2xs);
+  line-height: var(--line-height-snug);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.syncBadge {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-8) var(--space-12);
+  font-size: var(--font-size-2xs);
+  font-weight: var(--font-weight-semibold);
+  border-radius: var(--radius-xs);
+}
+
+.syncText {
+  flex: 1;
+  min-width: 0;
+}
+
+.syncDot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-circle);
+}
+
+/* Status variants — applied to both the badge and the dot */
+.ok {
+  background: var(--sync-ok-bg);
+  color: var(--color-accent);
+}
+
+.syncDot.ok {
+  background: var(--sync-ok-dot);
+}
+
+.pending {
+  background: var(--sync-pending-bg);
+  color: var(--sync-pending-fg);
+}
+
+.syncDot.pending {
+  background: var(--sync-pending-dot);
+}
+
+.error {
+  background: var(--color-error-bg);
+  color: var(--sync-error-fg);
+}
+
+.syncDot.error {
+  background: var(--color-error);
+}

@@ -96,24 +96,20 @@ textarea {
 }
 
 /* ----------------------------------------------------------------------------
-   Keyboard accessibility
-   reset.css strips the default focus ring so taps don't leave an outline on
-   mobile. This restores a visible ring for keyboard users only, which is the
-   behaviour :focus-visible exists for.
-   ------------------------------------------------------------------------- */
-:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-}
+   Focus
 
-button:focus-visible,
-a:focus-visible,
-input:focus-visible,
-select:focus-visible,
-textarea:focus-visible {
-  outline: 2px solid var(--color-accent);
-  outline-offset: 2px;
-  box-shadow: var(--ring-focus-visible);
+   No outlines, matching the original stylesheets, which set outline: none
+   throughout and showed focus only through a border colour change plus a
+   soft 8%-opacity ring — declared in each field's own module.
+
+   An outline on top of that read as a doubled ring, and outline-offset
+   pushed it clear of the field's border, which is what made it obvious. On
+   text inputs it appeared on click too, not just keyboard navigation:
+   browsers apply :focus-visible to text entry regardless of input method.
+   ------------------------------------------------------------------------- */
+:focus,
+:focus-visible {
+  outline: none;
 }
 
 /* ----------------------------------------------------------------------------

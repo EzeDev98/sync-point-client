@@ -4,8 +4,9 @@ import { useCallback, useEffect, useState } from 'react';
  * Counts down to zero, one second at a time.
  *
  * The OTP screens each carried their own copy of this interval logic for
- * their resend cooldown. `restart` accepts a duration so a server-supplied
- * 429 retry window can override the default.
+ * their resend cooldown, and ReceivePayment had a third variant for QR
+ * expiry. `restart` accepts a duration so a server-supplied 429 retry window
+ * can override the default.
  */
 export function useCountdown(initialSeconds = 0) {
   const [secondsLeft, setSecondsLeft] = useState(initialSeconds);
@@ -24,5 +25,12 @@ export function useCountdown(initialSeconds = 0) {
     setSecondsLeft(seconds);
   }, [initialSeconds]);
 
-  return { secondsLeft, restart, isComplete: secondsLeft <= 0 };
+  const stop = useCallback(() => setSecondsLeft(0), []);
+
+  /** mm:ss, for display next to an expiring item. */
+  const formatted = `${String(Math.floor(secondsLeft / 60)).padStart(2, '0')}:${String(
+    secondsLeft % 60
+  ).padStart(2, '0')}`;
+
+  return { secondsLeft, formatted, restart, stop, isComplete: secondsLeft <= 0 };
 }

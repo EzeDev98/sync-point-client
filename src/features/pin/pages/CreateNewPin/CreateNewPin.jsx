@@ -1,17 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, FormError, Modal } from '@shared/components/ui';
+import { Button, FormError, Modal, PinField } from '@shared/components/ui';
 import { FormScreen } from '@shared/components/layout';
 import { useNetwork } from '@shared/hooks/useNetwork';
 import { completePinReset } from '@features/pin/api/pinApi';
-import { saveOfflinePinVerifier } from '@features/pin/services/pinVerifier';
+import { saveOfflinePinVerifier } from '@core/crypto/pinVerifier';
 import { initializeEncryption } from '@core/crypto/keyManager';
 import {
   clearPinResetState,
   getPinResetToken,
   hasPinResetToken,
 } from '@features/pin/state/pinResetState';
-import PinField from '@features/pin/components/PinField/PinField.jsx';
 import {
   collectErrors,
   validateNewPin,

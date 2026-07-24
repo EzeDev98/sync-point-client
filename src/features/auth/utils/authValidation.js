@@ -1,17 +1,16 @@
+import { validateRequired } from '@shared/utils/validation';
+
 /**
- * Field validators shared across the auth screens.
+ * Password and phone rules specific to the auth screens.
  *
- * The same phone, password and OTP rules were previously re-implemented
- * inside a local validate() in Login, Register, ForgotPassword,
- * VerifyResetOtp and CreateNewPassword — five copies that had already drifted
- * apart (Register required 6 characters for a password, CreateNewPassword
- * required 8).
- *
- * Each validator returns an error string, or an empty string when valid.
+ * The OTP and error-collection helpers moved to shared/utils/validation —
+ * the PIN feature needed the identical implementations. They are re-exported
+ * here so auth call sites keep one import.
  */
 
+export { OTP_LENGTH, collectErrors, validateOtp, validateRequired } from '@shared/utils/validation';
+
 export const PASSWORD_MIN_LENGTH = 8;
-export const OTP_LENGTH = 6;
 
 export function validatePhoneNumber(value) {
   const trimmed = (value ?? '').trim();
@@ -20,10 +19,6 @@ export function validatePhoneNumber(value) {
     return 'Enter a valid phone number (10-11 digits)';
   }
   return '';
-}
-
-export function validateRequired(value, label) {
-  return (value ?? '').trim() ? '' : `${label} is required`;
 }
 
 export function validateEmail(value) {
@@ -47,15 +42,5 @@ export function validatePasswordConfirmation(confirmation, password) {
   return '';
 }
 
-export function validateOtp(value) {
-  if (!value) return 'Verification code is required';
-  if (!new RegExp(`^\\d{${OTP_LENGTH}}$`).test(value)) {
-    return 'The verification code is invalid';
-  }
-  return '';
-}
-
-/** Drops empty entries so callers can test with Object.keys(...).length. */
-export function collectErrors(candidates) {
-  return Object.fromEntries(Object.entries(candidates).filter(([, message]) => Boolean(message)));
-}
+/** Kept so the import surface of this module stays stable for call sites. */
+export { validateRequired as validateRequiredField };

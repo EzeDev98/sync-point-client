@@ -1,0 +1,43 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  min-width: 0;
+}
+
+.label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.optional {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-muted);
+}
+
+/*
+  min-height reserves the message line whether or not a message is present.
+  Without it the whole form shifts down the moment a validation error
+  appears. This was in the original stylesheet and is deliberate.
+*/
+.hint,
+.error {
+  margin: 0;
+  min-height: 16px;
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-snug);
+  transition: var(--transition-color);
+}
+
+.hint {
+  color: var(--color-text-muted);
+}
+
+.error {
+  color: var(--color-error);
+}

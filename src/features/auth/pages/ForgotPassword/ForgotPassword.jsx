@@ -4,7 +4,7 @@ import { Button, FormError, TextField, TextLink } from '@shared/components/ui';
 import { useNetwork } from '@shared/hooks/useNetwork';
 import { requestPasswordResetOtp } from '@features/auth/api/authApi';
 import { setPhoneNumber as savePhoneNumber } from '@features/auth/state/passwordResetState';
-import AuthLayout from '@features/auth/components/AuthLayout/AuthLayout.jsx';
+import { FormScreen } from '@shared/components/layout';
 import { validatePhoneNumber } from '@features/auth/utils/authValidation';
 
 function ForgotPassword() {
@@ -49,7 +49,7 @@ function ForgotPassword() {
   }
 
   return (
-    <AuthLayout
+    <FormScreen
       title="Forgot password?"
       subtitle="Enter the phone number associated with your account."
       onSubmit={handleSubmit}
@@ -70,7 +70,7 @@ function ForgotPassword() {
       <Button type="submit" loading={isSubmitting} loadingLabel="Sending code...">
         Send OTP
       </Button>
-    </AuthLayout>
+    </FormScreen>
   );
 }
 

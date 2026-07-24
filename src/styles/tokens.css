@@ -58,6 +58,15 @@
   --amber-800: #92400E;
   --amber-900: #633806;
 
+  /* Sync status — distinct from the semantic status ramps because these
+     signal transport state (synced / in-flight / failed), not validity */
+  --sync-ok-bg: #E8F7EF;
+  --sync-ok-dot: #16A34A;
+  --sync-pending-bg: #FFF4D8;
+  --sync-pending-fg: #B45309;
+  --sync-pending-dot: #D97706;
+  --sync-error-fg: #B91C1C;
+
   /* Blue — informational */
   --blue-50: #E6F1FB;
   --blue-900: #0C447C;
@@ -125,6 +134,19 @@
   /* Status — info */
   --color-info: var(--blue-900);
   --color-info-bg: var(--blue-50);
+
+  /* Transaction category tints, used by the transaction list icons */
+  --color-tx-send-bg: var(--amber-100);
+  --color-tx-send-fg: var(--amber-900);
+  --color-tx-receive-bg: var(--teal-100);
+  --color-tx-receive-fg: var(--teal-800);
+  --color-tx-sync-bg: var(--blue-50);
+  --color-tx-sync-fg: var(--blue-900);
+  --color-tx-fund-bg: var(--indigo-50);
+  --color-tx-fund-fg: var(--indigo-900);
+
+  /* Accent hover wash used by the settings trigger */
+  --color-accent-wash: #F0FBF9;
 
   /* Disabled */
   --color-disabled-bg: var(--gray-100);
@@ -233,6 +255,8 @@
   --duration-fast: 160ms;
   --duration-base: 220ms;
   --duration-slow: 300ms;
+  /* Slide-in panels. Matches the original drawer timing exactly. */
+  --duration-drawer: 250ms;
   --easing-standard: ease;
   --easing-out: cubic-bezier(0.16, 1, 0.3, 1);
 

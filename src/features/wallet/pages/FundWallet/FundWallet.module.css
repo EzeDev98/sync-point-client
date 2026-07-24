@@ -1,0 +1,27 @@
+/*
+  Reproduces the original .page-body: grows to fill the shell and centres its
+  content vertically, so a short screen sits in the middle of the viewport
+  rather than pinned under the header.
+*/
+.body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--space-20);
+  min-height: 0;
+  padding: var(--space-24) 0;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-16);
+}
+
+@media (max-width: 480px) {
+  .body {
+    gap: var(--space-16);
+    padding: var(--space-20) 0;
+  }
+}

@@ -1,0 +1,61 @@
+.screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100svh;
+  padding: var(--space-24);
+  background: var(--color-bg);
+}
+
+.card {
+  width: 100%;
+  max-width: 380px;
+  padding: var(--space-32);
+  text-align: center;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2xl);
+}
+
+.icon {
+  margin-bottom: var(--space-16);
+  font-size: 48px;
+  line-height: 1;
+}
+
+.title {
+  margin-bottom: var(--space-10);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.message {
+  margin-bottom: var(--space-20);
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-relaxed);
+  color: var(--color-text-secondary);
+}
+
+.requirements {
+  margin-bottom: var(--space-20);
+  padding: var(--space-12) var(--space-16);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  color: var(--sync-error-fg);
+  text-align: left;
+  background: var(--color-error-bg);
+  border: 1px solid var(--color-error-border);
+  border-radius: var(--radius-lg);
+}
+
+.requirementList {
+  margin-top: var(--space-4);
+  padding-left: var(--space-16);
+  list-style: disc;
+}
+
+.footnote {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}

@@ -8,7 +8,7 @@ import {
   getResetToken,
   hasResetToken,
 } from '@features/auth/state/passwordResetState';
-import AuthLayout from '@features/auth/components/AuthLayout/AuthLayout.jsx';
+import { FormScreen } from '@shared/components/layout';
 import {
   PASSWORD_MIN_LENGTH,
   collectErrors,
@@ -84,7 +84,7 @@ function CreateNewPassword() {
 
   return (
     <>
-      <AuthLayout
+      <FormScreen
         title="Create a new password"
         subtitle="Choose a strong password for your account."
         onSubmit={handleSubmit}
@@ -115,7 +115,7 @@ function CreateNewPassword() {
         <Button type="submit" loading={isSubmitting} loadingLabel="Resetting password...">
           Reset password
         </Button>
-      </AuthLayout>
+      </FormScreen>
 
       <Modal
         open={showSuccess}

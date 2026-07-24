@@ -11,7 +11,7 @@ import {
 } from '@shared/components/ui';
 import { useNetwork } from '@shared/hooks/useNetwork';
 import { registerUser } from '@features/auth/api/authApi';
-import AuthLayout from '@features/auth/components/AuthLayout/AuthLayout.jsx';
+import { FormScreen } from '@shared/components/layout';
 import StepIndicator from '@features/auth/components/StepIndicator/StepIndicator.jsx';
 import {
   collectErrors,
@@ -127,7 +127,7 @@ function Register() {
   }
 
   return (
-    <AuthLayout
+    <FormScreen
       wide
       scrollable
       title="Create your account"
@@ -274,7 +274,7 @@ function Register() {
           </Button>
         </ButtonGroup>
       )}
-    </AuthLayout>
+    </FormScreen>
   );
 }
 

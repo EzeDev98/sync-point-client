@@ -1,0 +1,32 @@
+/*
+  Route cross-fade. The exit duration here must stay in step with
+  EXIT_DURATION_MS in AnimatedRoutes.jsx — the component holds the outgoing
+  route on screen for exactly that long before swapping.
+*/
+.wrapper {
+  width: 100%;
+  min-height: 100svh;
+}
+
+.enter {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity var(--duration-base) var(--easing-standard),
+    transform var(--duration-base) var(--easing-standard);
+}
+
+.exit {
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity var(--duration-fast) var(--easing-standard),
+    transform var(--duration-fast) var(--easing-standard);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .enter,
+  .exit {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}

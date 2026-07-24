@@ -10,8 +10,15 @@ import './styles/tokens.css';
 import './styles/reset.css';
 import './styles/base.css';
 
-import DeviceGate from './features/device/pages/DeviceGate';
+import { configureHttpClient } from './core/http/httpClient';
+import { getValidToken } from './features/auth/services/tokenStore';
+import DeviceGate from './features/device/pages/DeviceGate/DeviceGate.jsx';
 import App from './app/App.jsx';
+
+// Wire the HTTP client's auth. Injected here rather than imported inside
+// core/http so that core stays independent of any feature, and so the
+// api ↔ token circular import the old code had cannot come back.
+configureHttpClient({ tokenProvider: getValidToken });
 
 // Capture beforeinstallprompt as early as possible — before any component
 // mounts. InstallPage reads from window.__installPrompt when it's ready.

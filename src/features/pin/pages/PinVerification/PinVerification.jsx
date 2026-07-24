@@ -1,19 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button, Modal, TextLink } from '@shared/components/ui';
+import { Button, Modal, TextLink, PinField } from '@shared/components/ui';
 import { FormScreen } from '@shared/components/layout';
 import { useNetwork } from '@shared/hooks/useNetwork';
 import { verifyWalletPin } from '@features/pin/api/pinApi';
 import { readPersisted } from '@features/auth/services/sessionManager';
-import { saveOfflinePinVerifier } from '@features/pin/services/pinVerifier';
-import { verifyOfflinePin } from '@features/pin/services/offlinePinVerifier';
+import { saveOfflinePinVerifier } from '@core/crypto/pinVerifier';
+import { verifyOfflinePin } from '@core/crypto/pinVerifier';
 import {
   initializeEncryption,
   isEncryptionReady,
   restoreEncryption,
 } from '@core/crypto/keyManager';
 import { startAutoSync, syncPendingTransactions } from '@features/sync/services/syncService';
-import PinField from '@features/pin/components/PinField/PinField.jsx';
 import { PIN_LENGTH } from '@features/pin/utils/pinValidation';
 
 /**
