@@ -18,7 +18,7 @@ import { ApiError } from './ApiError.js';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:2000/api/v1';
 
-// const BASE_URL = 'http://localhost:2000/api/v1';
+
 
 /** Set once at startup by the app entry point. */
 let getAuthToken = null;
