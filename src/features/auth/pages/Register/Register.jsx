@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Button,
@@ -51,6 +51,29 @@ function Register() {
   const [formData, setFormData] = useState(EMPTY_FORM);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const step1Ref = useRef(null);
+  const step2Ref = useRef(null);
+  const [sliderHeight, setSliderHeight] = useState(null);
+
+  // .track lays both steps out as flex items in a row, and flexbox's
+  // default `align-items: stretch` forces both .step boxes to match the
+  // taller one — regardless of which step is visible. Measure each
+  // step's .fields wrapper (an ordinary block, not itself a flex item,
+  // so its height is never stretched) to get the step's real content
+  // height, and apply that to .slider so no dead space is left below
+  // the shorter step.
+  useEffect(() => {
+    const activeEl = step === 1 ? step1Ref.current : step2Ref.current;
+    if (!activeEl) return undefined;
+
+    const updateHeight = () => setSliderHeight(activeEl.offsetHeight);
+    updateHeight();
+
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(activeEl);
+    return () => observer.disconnect();
+  }, [step]);
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -147,11 +170,14 @@ function Register() {
         </p>
       }
     >
-      <div className={styles.slider}>
+      <div
+        className={styles.slider}
+        style={sliderHeight ? { height: sliderHeight } : undefined}
+      >
         <div className={[styles.track, step === 2 ? styles.trackStepTwo : ''].join(' ')}>
           {/* Step 1 — basic info */}
           <section className={styles.step} aria-hidden={step !== 1}>
-            <div className={styles.fields}>
+            <div className={styles.fields} ref={step1Ref}>
               <div className={styles.row}>
                 <TextField
                   label="First name"
@@ -213,7 +239,7 @@ function Register() {
 
           {/* Step 2 — security and demographics */}
           <section className={styles.step} aria-hidden={step !== 2}>
-            <div className={styles.fields}>
+            <div className={styles.fields} ref={step2Ref}>
               <TextField
                 label="Password"
                 name="password"
