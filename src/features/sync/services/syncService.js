@@ -3,6 +3,7 @@ import {
   getPendingCount,
   getPendingTransactions,
   markTransactionFailed,
+  markTransactionRejected,
   markTransactionSynced,
 } from '@core/db/transactionRepository';
 import { syncTransaction } from '@features/sync/api/syncApi';
@@ -22,7 +23,14 @@ const CHUNK_SIZE = 3;
 let isSyncing = false;
 let activeOnlineHandler = null;
 
-/** Only the fields the server accepts — decrypted locals are not sent. */
+/**
+ * Only the fields the server accepts — decrypted locals are not sent.
+ *
+ * `signature` is the sender's authorization of this exact transfer. It MUST
+ * be forwarded or the server cannot verify the transfer and will reject it,
+ * so a transfer stored before signatures existed (no signature) will be
+ * rejected on sync rather than silently accepted.
+ */
 function toSyncPayload(transaction) {
   return {
     transactionRef: transaction.transactionRef,
@@ -40,6 +48,7 @@ function toSyncPayload(transaction) {
     receiverPhone: transaction.receiverPhone,
     receiverName: transaction.receiverName,
     createdAt: transaction.createdAt,
+    signature: transaction.signature,
   };
 }
 
@@ -60,6 +69,26 @@ async function announceBalance() {
   } catch (err) {
     console.error('[syncService] Balance refresh failed:', err.message);
   }
+}
+
+/**
+ * Builds the set of transactionRefs the server rejected in this batch, keyed
+ * to the reason it gave.
+ *
+ * The server answers 200 even when it refuses individual transfers — the
+ * refused ones are listed in `data.failedTransactions`. Everything else in
+ * the batch was either newly settled or already processed; both mean the
+ * server holds it. So the rule is: rejected ⇒ terminal fail, everything else
+ * ⇒ synced. (The idempotent "all already processed" response simply carries
+ * no failedTransactions, so every ref falls through to synced.)
+ */
+function rejectionsByRef(response) {
+  const rejected = new Map();
+  const failed = response?.data?.failedTransactions ?? [];
+  for (const entry of failed) {
+    rejected.set(entry.transactionReference, entry.failureReason || 'Rejected by the server.');
+  }
+  return rejected;
 }
 
 export async function syncPendingTransactions(onProgress) {
@@ -90,26 +119,44 @@ export async function syncPendingTransactions(onProgress) {
 
   for (const batch of chunk(sendable, CHUNK_SIZE)) {
     try {
-      await syncTransaction(batch.map(toSyncPayload));
+      const response = await syncTransaction(batch.map(toSyncPayload));
+
+      // A processed batch always comes back with a data envelope. Its absence
+      // means we cannot trust the per-transaction outcome, so treat it like a
+      // transport failure below and leave the whole batch to retry rather than
+      // guess that it succeeded.
+      if (!response || typeof response !== 'object' || !response.data) {
+        throw new Error('Malformed sync response — no data envelope.');
+      }
+
+      const rejected = rejectionsByRef(response);
 
       for (const transaction of batch) {
-        await markTransactionSynced(transaction.transactionRef);
-        synced += 1;
+        if (rejected.has(transaction.transactionRef)) {
+          // The server received it and refused this transfer specifically
+          // (e.g. invalid signature). Terminal — money returns to the offline
+          // balance and it will not be retried.
+          await markTransactionRejected(transaction.transactionRef, rejected.get(transaction.transactionRef));
+          failed += 1;
+        } else {
+          // Newly settled or already processed — either way the server has it.
+          await markTransactionSynced(transaction.transactionRef);
+          synced += 1;
+        }
         report(transaction.transactionRef);
       }
     } catch (err) {
       console.error('[syncService] Chunk failed:', err.message);
 
-      // A transport failure says nothing about whether the server accepted
-      // the batch, so nothing is marked and the run stops. Everything
-      // already synced stays synced and is never resent; the remainder is
-      // picked up by the next attempt. Marking these failed instead would
-      // strand them permanently, since failed records are not retried.
+      // A transport failure (or an uninterpretable response) says nothing
+      // about whether the server accepted the batch, so nothing is settled and
+      // the run stops. Everything already synced stays synced and is never
+      // resent; the remainder is picked up by the next attempt.
       if (isNetworkFailure(err)) {
         return {
           total: pending.length,
           synced,
-          failed: 0,
+          failed,
           networkError: true,
           message:
             synced > 0
@@ -118,7 +165,9 @@ export async function syncPendingTransactions(onProgress) {
         };
       }
 
-      // A genuine server rejection. Only this chunk is affected.
+      // Not a per-transaction verdict and not a network drop — record the
+      // error but leave these records retryable (do NOT settle or terminally
+      // fail on an outcome we never received). The next attempt resends them.
       for (const transaction of batch) {
         await markTransactionFailed(transaction.transactionRef, err.message);
         failed += 1;

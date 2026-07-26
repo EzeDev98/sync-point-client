@@ -2,6 +2,7 @@ import { getIsOnline } from '@core/network/networkService';
 import { clearAllTransactions, getPendingCount } from '@core/db/transactionRepository';
 import { logoutUser } from '@features/auth/api/authApi';
 import { clearAuthSession } from '@features/auth/services/sessionManager';
+import { clearSigningKey } from '@features/wallet/services/signingKeyService';
 import { calculateOfflineBalance } from '@features/wallet/services/walletLedger';
 import { syncPendingTransactions } from '@features/sync/services/syncService';
 
@@ -22,6 +23,11 @@ async function readBlockers() {
 async function executeLogout(navigate) {
   await logoutUser();
   await clearAllTransactions();
+  // Drop this device's signing identity too, so whoever signs in next enrolls
+  // a fresh key rather than inheriting the previous user's. Safe here because
+  // logout is already gated on there being nothing unsynced — no in-flight
+  // transfer can be stranded by removing the key.
+  await clearSigningKey();
   clearAuthSession();
   navigate('/login', { replace: true });
 }

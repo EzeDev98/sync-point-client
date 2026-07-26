@@ -22,6 +22,7 @@ import {
   updateTransactionStatus,
 } from '@core/db/transactionRepository';
 import { calculateOfflineBalance } from '@features/wallet/services/walletLedger';
+import { signTransferWithDeviceKey } from '@features/wallet/services/signingKeyService';
 import { getFullName, readIdentity } from '@features/wallet/utils/identity';
 import {
   buildTransferPayload,
@@ -173,10 +174,10 @@ function SendMoney() {
   }
 
   /**
-   * Verifying the PIN only *prepares* the transaction — it builds the QR the
-   * receiver scans. Nothing is written to storage and nothing is debited
-   * here. The debit happens only when the sender taps Done on the final
-   * screen, after both sides have confirmed the handoff.
+   * Verifying the PIN only *prepares* the transaction — it signs the transfer
+   * and builds the QR the receiver scans. Nothing is written to storage and
+   * nothing is debited here. The debit happens only when the sender taps Done
+   * on the final screen, after both sides have confirmed the handoff.
    */
   async function handleVerifyPin(e) {
     e.preventDefault();
@@ -217,11 +218,45 @@ function SendMoney() {
 
       sessionStorage.removeItem('pinAttempts');
 
+      // Fresh sufficiency check against the live ledger — this is the point of
+      // no return. Once the transfer is signed just below, the receiver can
+      // settle it whether or not this device ever finalizes the debit, and
+      // under Model B the server no longer re-checks the sender's funds. The
+      // review-step check used a snapshot that a background sync could have
+      // moved since (e.g. a received credit settling to the online mirror), so
+      // re-read before committing to the signature.
+      const currentBalance = await calculateOfflineBalance();
+      setOfflineBalance(currentBalance);
+      if (currentBalance < Number(request.amount)) {
+        setErrorMessage(
+          `Insufficient balance. Your offline balance is now ${formatNaira(currentBalance)}, but this payment needs ${formatNaira(request.amount)}.`
+        );
+        setPin('');
+        setStep(Step.REVIEW);
+        return;
+      }
+
       const transactionRef = generateTransactionRef();
       const createdAt = new Date().toISOString();
 
-      setTransferPayload(buildTransferPayload({ request, transactionRef, createdAt, sender }));
-      setRequest((prev) => ({ ...prev, transactionRef, createdAt }));
+      // Sign the transfer with this device's key. signTransferWithDeviceKey
+      // ensures the device is enrolled+registered first and THROWS if it
+      // cannot be — a transfer we cannot sign must never be queued, because
+      // the server could never verify it. The signed fields are exactly what
+      // the server reconstructs and verifies, so they must match the values
+      // stored on the debit and sent at sync time.
+      const signature = await signTransferWithDeviceKey({
+        transactionRef,
+        requestRef: request.requestRef,
+        senderWalletId: sender.walletId,
+        receiverWalletId: request.receiverWalletId,
+        amount: Number(request.amount),
+        currency: request.currency || 'NGN',
+        createdAt,
+      });
+
+      setTransferPayload(buildTransferPayload({ request, transactionRef, createdAt, sender, signature }));
+      setRequest((prev) => ({ ...prev, transactionRef, createdAt, signature }));
       setStep(Step.SHOW_QR);
     } catch (err) {
       console.error('[SendMoney] PIN verification error:', err);
@@ -252,6 +287,7 @@ function SendMoney() {
         receiverName: request.receiverName,
         entryType: 'DEBIT',
         createdAt: request.createdAt,
+        signature: request.signature,
       });
 
       await updateTransactionStatus(request.transactionRef, 'SUCCESS');

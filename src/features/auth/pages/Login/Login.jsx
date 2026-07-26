@@ -16,6 +16,7 @@ import { checkPinSet, loginUser } from '@features/auth/api/authApi';
 import { persistValue, hasResumableSession } from '@features/auth/services/sessionManager';
 import { refreshOnStartup } from '@features/auth/services/tokenStore';
 import { restoreQuarantineIfPresent } from '@features/device/services/quarantineService';
+import { ensureSigningKeyEnrolled } from '@features/wallet/services/signingKeyService';
 import { performHardReset } from '@features/device/services/hardReset';
 import { checkForUpdate } from '@features/device/services/versionService';
 import { FormScreen } from '@shared/components/layout';
@@ -171,6 +172,12 @@ function Login() {
     try {
       const data = await loginUser(formData.phoneNumber, formData.password);
       persistSession(data);
+
+      // Register this device's offline-transfer signing key while we have a
+      // token and a connection. Best-effort by design: it never throws, so a
+      // transient failure here does not block sign-in — the send flow
+      // re-checks and registers if this didn't complete.
+      await ensureSigningKeyEnrolled();
 
       const hadQuarantinedData = await restoreQuarantineIfPresent(data.wallet_id);
       if (hadQuarantinedData) {

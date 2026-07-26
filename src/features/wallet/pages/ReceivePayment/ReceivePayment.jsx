@@ -234,6 +234,11 @@ function ReceivePayment() {
         receiverName: receiver.name,
         entryType: 'CREDIT',
         createdAt: senderPayload.createdAt || new Date().toISOString(),
+        // The sender's signature, carried in the QR. Persisting it is what
+        // lets this device settle the credit on its own at sync time — the
+        // server verifies it against the sender's key regardless of who
+        // submits the transfer.
+        signature: senderPayload.signature,
       });
 
       await updateTransactionStatus(senderPayload.transactionRef, 'SUCCESS');

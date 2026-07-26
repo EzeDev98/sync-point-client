@@ -58,8 +58,15 @@ export function validatePaymentRequest(payload, { senderWalletId, balance, pendi
   return '';
 }
 
-/** Builds the TRANSFER payload the receiver scans back. */
-export function buildTransferPayload({ request, transactionRef, createdAt, sender }) {
+/**
+ * Builds the TRANSFER payload the receiver scans back.
+ *
+ * `signature` is the sender's authorization of this exact transfer (see
+ * core/crypto/transferSignature). It rides inside the QR so the receiver can
+ * store it and later present it when syncing — that is what lets the receiver
+ * settle the money without the sender being online.
+ */
+export function buildTransferPayload({ request, transactionRef, createdAt, sender, signature }) {
   return {
     type: 'TRANSFER',
     transactionRef,
@@ -75,6 +82,7 @@ export function buildTransferPayload({ request, transactionRef, createdAt, sende
     receiverPhone: request.receiverPhone,
     receiverName: request.receiverName,
     createdAt,
+    signature,
   };
 }
 
@@ -118,6 +126,13 @@ export function buildPaymentRequest({ requestRef, amount, description, receiver,
 export function validateTransferPayload(payload, { requestRef, receiverWalletId, expectedAmount, expiresAt }) {
   if (!payload || payload.type !== 'TRANSFER') {
     return "Invalid QR code. Please scan the sender's transaction receipt QR.";
+  }
+
+  // No signature means the transfer cannot be settled server-side (the sender
+  // never authorized it in a verifiable way), so it must not be accepted as a
+  // received credit — it would sit on the device forever, unsyncable.
+  if (!payload.signature) {
+    return 'This payment is missing its security signature and cannot be accepted. Ask the sender to update their app and try again.';
   }
 
   if (payload.requestRef !== requestRef) {

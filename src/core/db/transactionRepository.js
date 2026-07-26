@@ -8,6 +8,11 @@ export const TransactionStatus = {
   SUCCESS: 'SUCCESS',
   SYNCED: 'SYNCED',
   CORRUPTED: 'CORRUPTED',
+  // Terminal: the server rejected this transfer on its own merits (e.g. an
+  // invalid signature). It is not spendable and must not be retried — see
+  // markTransactionRejected. Distinct from the transient, retryable failure
+  // recorded by markTransactionFailed, which leaves status untouched.
+  FAILED: 'FAILED',
 };
 
 /**
@@ -57,7 +62,12 @@ export function markTransactionSynced(transactionRef) {
   });
 }
 
-/** Records a failed sync attempt, incrementing the retry counter. */
+/**
+ * Records a transient, retryable sync failure — a transport error or a
+ * response we could not interpret. Status is left untouched and `synced`
+ * stays false, so the record remains in the pending queue and is retried on
+ * the next attempt. This is NOT for a server verdict on the transfer itself.
+ */
 export async function markTransactionFailed(transactionRef, errorMessage) {
   return withTransactions('readwrite', (store, setResult) => {
     const request = store.get(transactionRef);
@@ -74,6 +84,24 @@ export async function markTransactionFailed(transactionRef, errorMessage) {
       store.put(record);
       setResult(record);
     };
+  });
+}
+
+/**
+ * Records a terminal server rejection of a transfer (e.g. an invalid
+ * signature or a wallet mismatch). The server received the batch and refused
+ * this transfer specifically, so retrying it unchanged is pointless.
+ *
+ * Sets status FAILED (so it drops out of the spendable balance — the money
+ * effectively returns to the sender) and synced=true (so it leaves the
+ * pending queue and never retries, and does not block sign-out). The user can
+ * simply create a fresh transfer.
+ */
+export function markTransactionRejected(transactionRef, reason) {
+  return updateTransactionStatus(transactionRef, TransactionStatus.FAILED, {
+    synced: true,
+    lastSyncError: reason || 'Rejected by the server.',
+    syncedAt: new Date().toISOString(),
   });
 }
 

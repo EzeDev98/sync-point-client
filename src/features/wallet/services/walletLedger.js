@@ -13,10 +13,31 @@ import { getAllTransactions } from '@core/db/transactionRepository';
  * Statuses that count toward the balance.
  *
  * SYNCED is included — a synced transaction still happened. CORRUPTED and
- * FAILED are excluded: one is unreadable, the other never reached the
- * server, and counting either would misstate spendable funds.
+ * FAILED are excluded: one is unreadable, the other was rejected by the
+ * server (the money returns to the sender), and counting either would
+ * misstate spendable funds.
  */
 const COUNTABLE_STATUSES = new Set(['PENDING', 'SUCCESS', 'SYNCED']);
+
+/**
+ * A received P2P transfer CREDIT that has synced has been settled to the
+ * receiver's ONLINE mirror balance on the server (Model B), so it is no
+ * longer offline money — leaving it in the offline sum as well would count
+ * the same naira twice, once offline and once online.
+ *
+ * This applies only to peer transfers (`type === 'TRANSFER'`). Funding
+ * credits (type FUND / TRANSFER_TO_ONLINE) represent value loaded onto the
+ * device and always count until it is spent or transferred back; sent DEBITs
+ * always count too, synced or not, because that money genuinely left the
+ * device.
+ */
+function isSettledToOnlineMirror(transaction) {
+  return (
+    transaction.entryType === 'CREDIT' &&
+    transaction.type === 'TRANSFER' &&
+    transaction.status === 'SYNCED'
+  );
+}
 
 export async function calculateOfflineBalance() {
   const transactions = await getAllTransactions();
@@ -25,6 +46,7 @@ export async function calculateOfflineBalance() {
 
   for (const transaction of transactions) {
     if (!COUNTABLE_STATUSES.has(transaction.status)) continue;
+    if (isSettledToOnlineMirror(transaction)) continue;
 
     const amount = Number(transaction.amount) || 0;
 
