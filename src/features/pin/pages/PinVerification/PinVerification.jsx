@@ -36,6 +36,19 @@ const PERSISTED_IDENTITY_KEYS = [
   'mirrorBalance',
 ];
 
+/**
+ * Where to go after a successful unlock: back to the route the user was on
+ * when the app was backgrounded (captured by AppLockGate), or the dashboard
+ * when there is nothing to return to. Read-and-clear so it is used exactly
+ * once. This is what lets an in-progress transaction survive a lock, an
+ * incoming call, or the app being minimised.
+ */
+function resolveReturnTo() {
+  const returnTo = sessionStorage.getItem('lockReturnTo');
+  sessionStorage.removeItem('lockReturnTo');
+  return returnTo || '/dashboard';
+}
+
 function PinVerification() {
   const navigate = useNavigate();
   const { isOffline } = useNetwork();
@@ -129,7 +142,7 @@ function PinVerification() {
       sessionStorage.removeItem('walletLocked');
 
       if (isQuickRelock) {
-        navigate('/dashboard', { replace: true });
+        navigate(resolveReturnTo(), { replace: true });
         return;
       }
 
@@ -147,7 +160,7 @@ function PinVerification() {
         });
       }
 
-      navigate('/dashboard', { replace: true });
+      navigate(resolveReturnTo(), { replace: true });
     } catch (err) {
       console.error('PIN verification error:', err);
       setErrorDialog(err.message || 'Unable to verify PIN. Please try again.');

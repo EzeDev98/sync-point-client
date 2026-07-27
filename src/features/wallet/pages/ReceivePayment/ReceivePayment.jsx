@@ -29,6 +29,7 @@ import {
   validateRequestedAmount,
   validateTransferPayload,
 } from '@features/wallet/utils/paymentRequest';
+import { usePersistedFlow } from '@features/wallet/hooks/usePersistedFlow';
 import QrDisplay from '@features/wallet/components/QrDisplay/QrDisplay.jsx';
 import QrScanner from '@features/wallet/components/QrScanner/QrScanner.jsx';
 import styles from './ReceivePayment.module.css';
@@ -65,11 +66,17 @@ const PREVIOUS_STEP = {
 function ReceivePayment() {
   const navigate = useNavigate();
 
-  const [step, setStep] = useState(Step.FORM);
-  const [formData, setFormData] = useState({ amount: '', description: '' });
+  // Restores an in-progress receive if the app was backgrounded (lock, call,
+  // minimise) and the user re-verified their PIN.
+  const { initial, persist, clear } = usePersistedFlow('receive:flow');
+
+  const [step, setStep] = useState(() => initial?.step ?? Step.FORM);
+  const [formData, setFormData] = useState(
+    () => initial?.formData ?? { amount: '', description: '' }
+  );
   const [errors, setErrors] = useState({});
-  const [request, setRequest] = useState(null);
-  const [senderPayload, setSenderPayload] = useState(null);
+  const [request, setRequest] = useState(() => initial?.request ?? null);
+  const [senderPayload, setSenderPayload] = useState(() => initial?.senderPayload ?? null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -102,6 +109,26 @@ function ReceivePayment() {
       navigate('/login', { replace: true });
     }
   }, [isSessionValid, navigate]);
+
+  // On resume from a lock the countdown state is gone, but request.expiresAt is
+  // an absolute time — restart the timer with whatever is actually left so the
+  // QR is not shown as falsely expired. Genuinely expired QRs (no time left)
+  // are left as-is and correctly render the "expired" state.
+  useEffect(() => {
+    if (initial?.step === Step.QR && initial?.request?.expiresAt) {
+      const remainingMs = new Date(initial.request.expiresAt).getTime() - Date.now();
+      if (remainingMs > 0) {
+        restart(Math.floor(remainingMs / 1000));
+      }
+    }
+    // Run once, on mount, against the restored snapshot only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keep the resumable snapshot current as the flow advances.
+  useEffect(() => {
+    persist({ step, formData, request, senderPayload });
+  }, [step, formData, request, senderPayload, persist]);
 
   const qrPayload = useMemo(() => (request ? JSON.stringify(request) : ''), [request]);
 
@@ -192,6 +219,7 @@ function ReceivePayment() {
     const previous = PREVIOUS_STEP[step];
 
     if (previous === null) {
+      clear();
       navigate('/dashboard');
       return;
     }
@@ -248,6 +276,8 @@ function ReceivePayment() {
         new CustomEvent('balance-updated', { detail: { balance: newBalance } })
       );
 
+      // Flow is done — drop the resumable snapshot so a later visit starts clean.
+      clear();
       navigate('/dashboard');
     } catch (err) {
       console.error('[ReceivePayment] Finalize credit error:', err);

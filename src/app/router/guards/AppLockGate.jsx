@@ -18,6 +18,17 @@ function AppLockGate() {
 
       if (document.visibilityState === 'hidden') {
         sessionStorage.setItem('walletLocked', 'true');
+
+        // Remember where the user was so the PIN screen can send them back
+        // there after unlocking. Without this, every unlock lands on the
+        // dashboard and abandons an in-progress transaction. Only worth
+        // remembering a protected route, and never the PIN screen itself.
+        const onProtectedRoute = PROTECTED_PATHS.some((path) =>
+          location.pathname.startsWith(path)
+        );
+        if (onProtectedRoute && !location.pathname.startsWith(ROUTES.VERIFY_PIN)) {
+          sessionStorage.setItem('lockReturnTo', location.pathname);
+        }
         return;
       }
 

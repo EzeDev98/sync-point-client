@@ -29,6 +29,7 @@ import {
   generateTransactionRef,
   validatePaymentRequest,
 } from '@features/wallet/utils/paymentRequest';
+import { usePersistedFlow } from '@features/wallet/hooks/usePersistedFlow';
 import QrDisplay from '@features/wallet/components/QrDisplay/QrDisplay.jsx';
 import QrScanner from '@features/wallet/components/QrScanner/QrScanner.jsx';
 import ReceiverCard from '@features/wallet/components/ReceiverCard/ReceiverCard.jsx';
@@ -69,9 +70,14 @@ const PREVIOUS_STEP = {
 function SendMoney() {
   const navigate = useNavigate();
 
-  const [step, setStep] = useState(Step.SCAN);
-  const [request, setRequest] = useState(null);
-  const [transferPayload, setTransferPayload] = useState(null);
+  // Restores an in-progress send if the app was backgrounded (lock, call,
+  // minimise) and the user re-verified their PIN. The entered PIN is never
+  // part of the snapshot — it is re-entered on the PIN step.
+  const { initial, persist, clear } = usePersistedFlow('send:flow');
+
+  const [step, setStep] = useState(() => initial?.step ?? Step.SCAN);
+  const [request, setRequest] = useState(() => initial?.request ?? null);
+  const [transferPayload, setTransferPayload] = useState(() => initial?.transferPayload ?? null);
   const [pin, setPin] = useState('');
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -108,6 +114,12 @@ function SendMoney() {
       navigate('/login', { replace: true });
     }
   }, [isSessionValid, navigate]);
+
+  // Keep the resumable snapshot current as the flow advances. The PIN, errors,
+  // and transient submit flags are intentionally excluded.
+  useEffect(() => {
+    persist({ step, request, transferPayload });
+  }, [step, request, transferPayload, persist]);
 
   async function handleScan(decodedText) {
     let payload;
@@ -148,6 +160,7 @@ function SendMoney() {
     const previous = PREVIOUS_STEP[step];
 
     if (previous === null) {
+      clear();
       navigate('/dashboard');
       return;
     }
@@ -221,10 +234,9 @@ function SendMoney() {
       // Fresh sufficiency check against the live ledger — this is the point of
       // no return. Once the transfer is signed just below, the receiver can
       // settle it whether or not this device ever finalizes the debit, and
-      // under Model B the server no longer re-checks the sender's funds. The
-      // review-step check used a snapshot that a background sync could have
-      // moved since (e.g. a received credit settling to the online mirror), so
-      // re-read before committing to the signature.
+      // the server no longer re-checks the sender's funds. The review-step
+      // check used a snapshot that a background sync could have moved since,
+      // so re-read before committing to the signature.
       const currentBalance = await calculateOfflineBalance();
       setOfflineBalance(currentBalance);
       if (currentBalance < Number(request.amount)) {
@@ -298,6 +310,8 @@ function SendMoney() {
         new CustomEvent('balance-updated', { detail: { balance: newBalance } })
       );
 
+      // Flow is done — drop the resumable snapshot so a later visit starts clean.
+      clear();
       navigate('/dashboard');
     } catch (err) {
       console.error('[SendMoney] Finalize debit error:', err);
