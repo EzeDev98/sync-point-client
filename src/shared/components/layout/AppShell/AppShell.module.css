@@ -4,7 +4,7 @@
   min-height: 100svh;
   max-width: var(--app-max-width);
   margin: 0 auto;
-  padding-bottom: var(--space-40);
+  padding-bottom: var(--space-16);
   background: var(--color-bg);
 }
 
@@ -42,7 +42,7 @@
 .footer {
   display: flex;
   justify-content: center;
-  padding: var(--space-20) var(--space-20) 0;
+  padding: var(--space-8) var(--space-20) 0;
 }
 
 @media (max-width: 480px) {

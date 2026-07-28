@@ -25,6 +25,7 @@ export const ROUTES = {
   CREATE_NEW_PIN: '/forgot-pin/reset',
 
   DASHBOARD: '/dashboard',
+  TRANSACTIONS: '/transactions',
   FUND: '/fund',
   RECEIVE: '/receive',
   SEND: '/send',
@@ -33,6 +34,7 @@ export const ROUTES = {
 /** Routes that require an unlocked wallet, used by the lock gate. */
 export const PROTECTED_PATHS = [
   ROUTES.DASHBOARD,
+  ROUTES.TRANSACTIONS,
   ROUTES.FUND,
   ROUTES.RECEIVE,
   ROUTES.SEND,

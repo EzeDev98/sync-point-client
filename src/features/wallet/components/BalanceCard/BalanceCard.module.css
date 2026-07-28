@@ -1,22 +1,35 @@
+/*
+  Item 2: the card now wears the "all synced" green (var(--sync-ok-bg)) and is
+  a touch shorter (reduced vertical padding, borderless — the fill gives it
+  enough definition on the page). The ok badge shares that green, so it melts
+  into the card as plain text; the pending/error states keep their own amber/
+  red chips so they still stand out.
+*/
 .card {
   margin-bottom: var(--space-18);
-  padding: var(--space-16) var(--space-18);
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
+  padding: var(--space-12) var(--space-16);
+  background: var(--sync-ok-bg);
   border-radius: var(--radius-2xl);
 }
 
+/*
+  Item 1: the right column was too narrow for its text, so "Wallet · Last
+  updated just now" clipped and "All transactions synced" broke across two
+  lines. It now gets the larger share of the width, the text may wrap instead
+  of clipping, and the font scales down a little on the narrowest screens.
+*/
 .inner {
   display: grid;
-  grid-template-columns: 1fr 1px 1fr;
+  grid-template-columns: minmax(0, 0.82fr) 1px minmax(0, 1.18fr);
   align-items: center;
-  gap: var(--space-18);
+  gap: var(--space-14);
 }
 
 .left {
   display: flex;
   flex-direction: column;
   gap: var(--space-6);
+  min-width: 0;
 }
 
 .label {
@@ -29,10 +42,11 @@
   display: flex;
   align-items: center;
   gap: var(--space-8);
+  min-width: 0;
 }
 
 .amount {
-  font-size: var(--font-size-3xl);
+  font-size: clamp(var(--font-size-2xl), 6.5vw, var(--font-size-3xl));
   font-weight: var(--font-weight-semibold);
   line-height: 1;
   letter-spacing: var(--letter-spacing-tight);
@@ -74,26 +88,25 @@
   flex-direction: column;
   align-items: flex-start;
   justify-content: center;
-  gap: var(--space-12);
+  gap: var(--space-8);
   min-width: 0;
 }
 
 .sub {
-  font-size: var(--font-size-2xs);
-  line-height: var(--line-height-snug);
+  font-size: clamp(10px, 2.7vw, var(--font-size-2xs));
+  line-height: var(--line-height-tight);
   color: var(--color-text-muted);
-  white-space: nowrap;
 }
 
 .syncBadge {
   box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: var(--space-8);
+  gap: var(--space-6);
   width: 100%;
   min-width: 0;
-  padding: var(--space-8) var(--space-12);
-  font-size: var(--font-size-2xs);
+  padding: var(--space-6) var(--space-10);
+  font-size: clamp(10px, 2.7vw, var(--font-size-2xs));
   font-weight: var(--font-weight-semibold);
   border-radius: var(--radius-xs);
 }
@@ -101,6 +114,7 @@
 .syncText {
   flex: 1;
   min-width: 0;
+  line-height: var(--line-height-tight);
 }
 
 .syncDot {

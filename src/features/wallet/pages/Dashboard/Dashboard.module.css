@@ -40,18 +40,28 @@
   color: var(--color-text-primary);
 }
 
-/* Reserved height — prevents the page shifting when a sync message appears */
+/*
+  Collapses to nothing when there is no sync message, so it stops reserving a
+  dead band between the balance card and the actions. When a message does
+  appear it takes only its own height, and the message carries its own top
+  gap so the spacing exists only when there is something to space.
+*/
 .syncResult {
-  min-height: 36px;
-  margin-top: var(--space-10);
+  display: flex;
+  justify-content: center;
+  min-height: 0;
 }
 
+/*
+  A flex child sized to its content, centred — so a short message like
+  "Nothing to sync." reads as a compact pill rather than a full-width bar.
+*/
 .syncResultMessage {
-  margin: 0;
-  padding: var(--space-6) var(--space-10);
+  margin: var(--space-8) 0 0;
+  padding: var(--space-6) var(--space-14);
   font-size: var(--font-size-2xs);
   text-align: center;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-pill);
 }
 
 .syncResultSuccess {

@@ -23,6 +23,13 @@ import styles from './Dashboard.module.css';
 const MIN_SPIN_MS = 600;
 const MAX_SYNC_RETRIES = 4;
 
+/**
+ * How many transactions the dashboard shows. Kept small on purpose so the
+ * page never scrolls — the rest live on the full history page, reached via
+ * "See all", which only appears once there are more than this to see.
+ */
+const DASHBOARD_TX_LIMIT = 4;
+
 const LogoutStep = {
   IDLE: 'idle',
   CHECKING: 'checking',
@@ -83,6 +90,16 @@ function Dashboard() {
     }
     return undefined;
   }, [loadError, navigate]);
+
+  // The sync result is a transient confirmation — clear it a few seconds after
+  // it appears so it does not sit on the dashboard indefinitely.
+  useEffect(() => {
+    if (syncResult && !isSyncing) {
+      const timeoutId = setTimeout(() => setSyncResult(null), 5000);
+      return () => clearTimeout(timeoutId);
+    }
+    return undefined;
+  }, [syncResult, isSyncing, setSyncResult]);
 
   function requireNetwork(action) {
     if (isOffline) {
@@ -180,6 +197,9 @@ function Dashboard() {
         ? 'Could not load your transactions.'
         : '';
 
+  const recentTransactions = transactions.slice(0, DASHBOARD_TX_LIMIT);
+  const hasMore = transactions.length > DASHBOARD_TX_LIMIT;
+
   return (
     <>
       <AppShell
@@ -250,13 +270,19 @@ function Dashboard() {
 
         <div className={styles.sectionHeader}>
           <span className={styles.sectionTitle}>Recent activity</span>
-          <button type="button" className={styles.seeAll}>
-            See all
-          </button>
+          {hasMore && (
+            <button
+              type="button"
+              className={styles.seeAll}
+              onClick={() => navigate('/transactions')}
+            >
+              See all
+            </button>
+          )}
         </div>
 
         <TransactionList
-          transactions={transactions}
+          transactions={recentTransactions}
           isLoading={isLoading}
           error={listError}
         />

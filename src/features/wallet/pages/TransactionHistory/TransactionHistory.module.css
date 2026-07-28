@@ -1,0 +1,8 @@
+/*
+  No inner scroll container here — the list renders every row and the page
+  itself scrolls (AppShell grows past the viewport). A little bottom padding
+  keeps the last row off the very edge.
+*/
+.wrapper {
+  padding-bottom: var(--space-20);
+}

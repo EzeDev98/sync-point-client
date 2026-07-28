@@ -15,7 +15,13 @@ import {
   SetPin,
   VerifyPinResetOtp,
 } from '@features/pin';
-import { Dashboard, FundWallet, ReceivePayment, SendMoney } from '@features/wallet';
+import {
+  Dashboard,
+  FundWallet,
+  ReceivePayment,
+  SendMoney,
+  TransactionHistory,
+} from '@features/wallet';
 import { InstallPage, Offline, Onboarding } from '@features/device';
 import AnimatedRoutes from '@app/router/AnimatedRoutes.jsx';
 import InstallGuard from '@app/router/guards/InstallGuard.jsx';
@@ -51,6 +57,7 @@ const ROUTE_CONFIG = [
   { path: ROUTES.CHANGE_PIN, element: <ChangePin />, installed: true, unlocked: true },
 
   { path: ROUTES.DASHBOARD, element: <Dashboard />, installed: true, unlocked: true },
+  { path: ROUTES.TRANSACTIONS, element: <TransactionHistory />, installed: true, unlocked: true },
   { path: ROUTES.FUND, element: <FundWallet />, installed: true, unlocked: true },
   { path: ROUTES.RECEIVE, element: <ReceivePayment />, installed: true, unlocked: true },
   { path: ROUTES.SEND, element: <SendMoney />, installed: true, unlocked: true },

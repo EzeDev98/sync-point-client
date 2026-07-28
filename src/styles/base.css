@@ -14,6 +14,17 @@ body {
   font-weight: var(--font-weight-regular);
   line-height: var(--line-height-normal);
   letter-spacing: var(--letter-spacing-normal);
+
+  /*
+    The font stack is already the Apple system font (-apple-system → San
+    Francisco on Apple devices). These make it render the way native Apple UI
+    does — grayscale antialiasing instead of the heavier subpixel default —
+    which is what gives SF its crisp, light "Apple" look. Applies app-wide,
+    dashboard included.
+  */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
 /* ----------------------------------------------------------------------------

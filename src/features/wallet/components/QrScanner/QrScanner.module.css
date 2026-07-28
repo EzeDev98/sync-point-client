@@ -141,8 +141,16 @@
   border-radius: 0 0 var(--radius-xs) 0;
 }
 
+/*
+  The sweep animates `top` (a percentage of the box) rather than translateY.
+  translateY percentages resolve against the element's OWN height — and this
+  line is 2px tall, so translateY(±40%) moved it ±0.8px and looked frozen.
+  Anchoring with left/width keeps it centred horizontally while top sweeps
+  the full frame.
+*/
 .scanLine {
   position: absolute;
+  left: 10%;
   z-index: var(--z-sticky);
   width: 80%;
   height: 2px;
@@ -161,10 +169,10 @@
 @keyframes scanSweep {
   0%,
   100% {
-    transform: translateY(-40%);
+    top: 8%;
   }
   50% {
-    transform: translateY(40%);
+    top: 92%;
   }
 }
 
@@ -176,6 +184,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .scanLine {
+    top: 50%;
     animation: none;
   }
 }
