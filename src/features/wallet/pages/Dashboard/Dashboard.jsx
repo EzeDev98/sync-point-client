@@ -28,7 +28,7 @@ const MAX_SYNC_RETRIES = 4;
  * page never scrolls — the rest live on the full history page, reached via
  * "See all", which only appears once there are more than this to see.
  */
-const DASHBOARD_TX_LIMIT = 4;
+const DASHBOARD_TX_LIMIT = 3;
 
 const LogoutStep = {
   IDLE: 'idle',

@@ -29,5 +29,8 @@ export function getTransactionLabel(transaction) {
 
 export function getTransactionStatusLabel(transaction) {
   if (transaction.status === 'CORRUPTED') return 'Unreadable';
-  return transaction.synced ? 'Synced' : 'Pending sync';
+  if (!transaction.synced) return 'Pending sync';
+  if (transaction.type === 'FUND') return 'Wallet topped up';
+  if (transaction.type === 'TRANSFER_TO_ONLINE') return 'Moved to online';
+  return 'Synced';
 }

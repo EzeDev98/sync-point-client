@@ -4,5 +4,6 @@
   keeps the last row off the very edge.
 */
 .wrapper {
+  padding-top: var(--space-16);
   padding-bottom: var(--space-20);
 }
