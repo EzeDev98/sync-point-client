@@ -39,7 +39,7 @@ function QuickActions({ onSend, onReceive, onFund, onSync, isSyncing = false, is
               .join(' ')}
           >
             <span className={spinning ? styles.spin : undefined}>
-              <Icon size={18} strokeWidth={1.8} />
+              <Icon size={20} strokeWidth={1.9} />
             </span>
           </div>
           <span className={styles.label}>{label}</span>

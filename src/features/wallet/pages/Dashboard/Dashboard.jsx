@@ -216,15 +216,34 @@ function Dashboard() {
               onMarkAsRead={markAsRead}
               onMarkAllAsRead={markAllAsRead}
             />
+
+            <div
+              className={[
+                styles.syncResult,
+                syncResult && !isSyncing ? styles.syncResultOpen : '',
+              ].join(' ')}
+            >
+              {syncResult && (
+                <p
+                  className={[
+                    styles.syncResultMessage,
+                    syncResult.failed > 0 ? styles.syncResultError : styles.syncResultSuccess,
+                  ].join(' ')}
+                >
+                  {syncResult.message}
+                </p>
+              )}
+            </div>
           </>
         }
+
         footer={
           <button
             type="button"
             className={styles.settingsTrigger}
             onClick={() => setIsSettingsOpen(true)}
           >
-            <Settings size={14} strokeWidth={1.8} />
+            <Settings size={16} />
             Settings
           </button>
         }
@@ -245,20 +264,6 @@ function Dashboard() {
           syncResult={syncResult}
         />
 
-        {/* Fixed height so the layout does not jump when a result appears */}
-        <div className={styles.syncResult}>
-          {syncResult && !isSyncing && (
-            <p
-              className={[
-                styles.syncResultMessage,
-                syncResult.failed > 0 ? styles.syncResultError : styles.syncResultSuccess,
-              ].join(' ')}
-            >
-              {syncResult.message}
-            </p>
-          )}
-        </div>
-
         <QuickActions
           isOffline={isOffline}
           isSyncing={isSyncing}
@@ -268,24 +273,26 @@ function Dashboard() {
           onSync={handleSync}
         />
 
-        <div className={styles.sectionHeader}>
-          <span className={styles.sectionTitle}>Recent activity</span>
-          {hasMore && (
-            <button
-              type="button"
-              className={styles.seeAll}
-              onClick={() => navigate('/transactions')}
-            >
-              See all
-            </button>
-          )}
-        </div>
+        <div className={styles.activityCard}>
+          <div className={styles.sectionHeader}>
+            <span className={styles.sectionTitle}>Recent activity</span>
+            {hasMore && (
+              <button
+                type="button"
+                className={styles.seeAll}
+                onClick={() => navigate('/transactions')}
+              >
+                See all
+              </button>
+            )}
+          </div>
 
-        <TransactionList
-          transactions={recentTransactions}
-          isLoading={isLoading}
-          error={listError}
-        />
+          <TransactionList
+            transactions={recentTransactions}
+            isLoading={isLoading}
+            error={listError}
+          />
+        </div>
       </AppShell>
 
       <SettingsDrawer

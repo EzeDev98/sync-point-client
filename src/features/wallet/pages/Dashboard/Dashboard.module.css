@@ -15,7 +15,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-12);
-  padding: var(--space-18) 0 var(--space-14);
+  padding: var(--space-16) 0;
 }
 
 .avatar {
@@ -23,8 +23,8 @@
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
-  width: 42px;
-  height: 42px;
+  width: 44px;
+  height: 44px;
   font-size: var(--font-size-base);
   font-weight: var(--font-weight-semibold);
   color: var(--color-accent);
@@ -34,34 +34,35 @@
 }
 
 .greetingText {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-light);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-medium);
   line-height: var(--line-height-tight);
   color: var(--color-text-primary);
 }
 
-/*
-  Collapses to nothing when there is no sync message, so it stops reserving a
-  dead band between the balance card and the actions. When a message does
-  appear it takes only its own height, and the message carries its own top
-  gap so the spacing exists only when there is something to space.
-*/
 .syncResult {
-  display: flex;
-  justify-content: center;
-  min-height: 0;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: var(--z-header);
+  transform: translate(-50%, -220%);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 260ms ease, opacity 220ms ease;
 }
 
-/*
-  A flex child sized to its content, centred — so a short message like
-  "Nothing to sync." reads as a compact pill rather than a full-width bar.
-*/
+.syncResultOpen {
+  transform: translate(-50%, -50%);
+  opacity: 1;
+  pointer-events: auto;
+}
+
 .syncResultMessage {
   margin: var(--space-8) 0 0;
   padding: var(--space-6) var(--space-14);
   font-size: var(--font-size-2xs);
   text-align: center;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-sm);
 }
 
 .syncResultSuccess {
@@ -74,11 +75,19 @@
   background: var(--color-error-bg);
 }
 
+/* Recent activity sits in its own white card, matching the actions card. */
+.activityCard {
+  padding: var(--space-8) var(--space-16) var(--space-4);
+  background: var(--color-surface-raised);
+  border-radius: var(--radius-3xl);
+  box-shadow: var(--shadow-sm);
+}
+
 .sectionHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: var(--space-12);
+  padding: var(--space-8) 0 var(--space-4);
 }
 
 .sectionTitle {

@@ -18,11 +18,11 @@ function resolveSyncStatus({ isSyncing, failedCount }) {
 
 function getSyncLabel({ status, pendingCount }) {
   if (status === 'error') return 'Sync failed';
-  if (status === 'pending') return 'Syncing transactions...';
+  if (status === 'pending') return 'Syncing...';
   if (pendingCount > 0) {
     return `${pendingCount} transaction${pendingCount === 1 ? '' : 's'} waiting`;
   }
-  return 'All transactions synced';
+  return 'All synced';
 }
 
 function BalanceCard({
@@ -42,12 +42,8 @@ function BalanceCard({
     <section className={styles.card}>
       <div className={styles.inner}>
         <div className={styles.left}>
-          <span className={styles.label}>Available balance</span>
-
-          <div className={styles.amountRow}>
-            <div className={[styles.amount, isVisible ? '' : styles.amountHidden].join(' ')}>
-              {isVisible ? formatNaira(balance) : '*****'}
-            </div>
+          <div className={styles.labelRow}>
+            <span className={styles.label}>Available balance</span>
 
             <button
               type="button"
@@ -57,19 +53,20 @@ function BalanceCard({
               aria-pressed={isVisible}
             >
               {isVisible ? (
-                <Eye size={16} strokeWidth={1.8} />
+                <Eye size={14} strokeWidth={1.8} />
               ) : (
-                <EyeOff size={16} strokeWidth={1.8} />
+                <EyeOff size={14} strokeWidth={1.8} />
               )}
             </button>
           </div>
+
+          <div className={[styles.amount, isVisible ? '' : styles.amountHidden].join(' ')}>
+            {isVisible ? formatNaira(balance) : '*****'}
+          </div>
         </div>
 
-        <div className={styles.divider} aria-hidden="true" />
-
         <div className={styles.right}>
-          <span className={styles.sub}>Wallet · Last updated just now</span>
-
+          <span className={styles.sub}>Last updated just now</span>
           <div className={badgeClassNames} role="status">
             <span className={dotClassNames} aria-hidden="true" />
             <span className={styles.syncText}>{getSyncLabel({ status, pendingCount })}</span>
