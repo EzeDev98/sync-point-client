@@ -107,15 +107,15 @@
   text-align: center;
 }
 
-.completeIcon {
-  font-size: 44px;
-  line-height: 1;
-}
-
-.completeTitle {
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-success-text);
+.completeIconWrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  color: var(--color-accent);
+  background: var(--color-accent-subtle);
+  border-radius: var(--radius-circle);
 }
 
 .completeAmount {
@@ -123,6 +123,7 @@
   font-weight: var(--font-weight-bold);
   letter-spacing: -1px;
   color: var(--color-accent);
+  line-height: var(--line-height-tight);
 }
 
 .completeDesc {
@@ -130,6 +131,31 @@
   font-size: var(--font-size-sm);
   line-height: var(--line-height-relaxed);
   color: var(--color-text-secondary);
+}
+
+.completeTo {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.completeName {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.completeCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-10);
+  width: 100%;
+  padding: var(--space-28) var(--space-20);
+  text-align: center;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--shadow-sm);
 }
 
 .completeCta {

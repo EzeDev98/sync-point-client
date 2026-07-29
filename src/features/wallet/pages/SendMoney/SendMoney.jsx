@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import {
   Button,
   ButtonGroup,
@@ -476,10 +476,6 @@ function SendMoney() {
         {step === Step.COMPLETE && request && (
           <div className={styles.completeScreen}>
             <div className={styles.completeCard}>
-              <div className={styles.completeIcon} aria-hidden="true">
-                ✅
-              </div>
-              <div className={styles.completeTitle}>Ready to complete</div>
               <div className={styles.completeAmount}>{formatNaira(request.amount)}</div>
               <div className={styles.completeTo}>Sending to</div>
               <div className={styles.completeName}>{request.receiverName}</div>
@@ -506,7 +502,7 @@ function SendMoney() {
               loading={isFinalizing}
               loadingLabel="Processing..."
             >
-              Done, back to dashboard
+              Complete
               <ArrowRight size={16} className={styles.ctaArrow} />
             </Button>
           </div>

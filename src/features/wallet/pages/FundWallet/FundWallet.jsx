@@ -253,15 +253,11 @@ function FundWallet() {
                 💳 Funds move from your <strong>online account</strong> into your{' '}
                 <strong>offline wallet</strong>, where they can be spent without a
                 connection.
-                <br />
-                <strong>Available to transfer: {formatNaira(currentBalance)}</strong>
               </>
             ) : (
               <>
                 🏦 Funds move from your <strong>offline wallet</strong> back into your{' '}
                 <strong>online account</strong>. This requires an internet connection.
-                <br />
-                <strong>Available to transfer: {formatNaira(currentBalance)}</strong>
               </>
             )}
           </InfoBanner>

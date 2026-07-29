@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, CheckCircle2 } from 'lucide-react';
 import {
   AmountField,
   Button,
@@ -429,16 +429,16 @@ function ReceivePayment() {
 
         {step === Step.COMPLETE && senderPayload && (
           <div className={styles.completeScreen}>
-            <div className={styles.completeIcon} aria-hidden="true">
-              🎉
+            <div className={styles.completeCard}>  
+              <div className={styles.completeAmount}>{formatNaira(senderPayload.amount)}</div>
+              <div className={styles.completeTo}>From</div>
+              <div className={styles.completeName}>{senderPayload.senderName}</div>
+              <p className={styles.completeDesc}>
+                Tap below to complete this transaction.
+                <br />
+                It will sync automatically when you are back online.
+              </p>
             </div>
-            <div className={styles.completeTitle}>Ready to complete</div>
-            <div className={styles.completeAmount}>{formatNaira(senderPayload.amount)}</div>
-            <p className={styles.completeDesc}>
-              Tap below to complete this transaction.
-              <br />
-              It will sync automatically when you are back online.
-            </p>
 
             <Button
               className={styles.completeCta}
@@ -446,7 +446,7 @@ function ReceivePayment() {
               loading={isFinalizing}
               loadingLabel="Processing..."
             >
-              Done, back to dashboard
+              Complete
               <ArrowRight size={16} className={styles.ctaArrow} />
             </Button>
           </div>
