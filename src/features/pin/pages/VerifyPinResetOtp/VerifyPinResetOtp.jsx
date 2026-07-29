@@ -44,6 +44,10 @@ function VerifyPinResetOtp() {
           Enter the verification code sent to <strong>{maskPhoneNumber(phoneNumber)}</strong>
         </>
       }
+      onBack={() => {
+        clearPinResetState();
+        navigate('/forgot-pin');
+      }} backLabel="Back"
       onSubmit={otpState.handleSubmit}
       footer={
         otpState.secondsLeft > 0 ? (

@@ -27,6 +27,7 @@ import AnimatedRoutes from '@app/router/AnimatedRoutes.jsx';
 import InstallGuard from '@app/router/guards/InstallGuard.jsx';
 import RequireUnlock from '@app/router/guards/RequireUnlock.jsx';
 import { ROUTES } from '@app/router/routes';
+import { ComingSoon } from '@shared/pages';
 
 /**
  * Every route is declared here as data rather than as nested JSX, so the
@@ -61,6 +62,7 @@ const ROUTE_CONFIG = [
   { path: ROUTES.FUND, element: <FundWallet />, installed: true, unlocked: true },
   { path: ROUTES.RECEIVE, element: <ReceivePayment />, installed: true, unlocked: true },
   { path: ROUTES.SEND, element: <SendMoney />, installed: true, unlocked: true },
+  { path: ROUTES.COMING_SOON, element: <ComingSoon />, installed: true, unlocked: true },
 ];
 
 /** Wraps an element in whichever guards its config asks for, innermost first. */

@@ -83,6 +83,11 @@ function CreateNewPin() {
       <FormScreen
         title="Create a new PIN"
         subtitle="Choose a new 4-digit transaction PIN"
+        onBack={() => {
+          clearPinResetState();
+          navigate('/verifypin');
+        }}
+        backLabel="Back to unlock screen"
         onSubmit={handleSubmit}
       >
         <PinField

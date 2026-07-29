@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ChevronRight, KeyRound, LogOut, X } from 'lucide-react';
+import { Camera, ChevronRight, KeyRound, Landmark, LogOut, ShieldCheck, HelpCircle, X } from 'lucide-react';
 import { FormError } from '@shared/components/ui';
 import styles from './SettingsDrawer.module.css';
 
@@ -13,7 +13,7 @@ import styles from './SettingsDrawer.module.css';
  * transitionend event rather than a duration kept in sync with the
  * stylesheet by hand.
  */
-function SettingsDrawer({ open, onClose, onChangePin, onLogout, logoutLabel, isLoggingOut, error }) {
+function SettingsDrawer({ open, onClose, onChangePin, onComingSoon, onLogout, logoutLabel, isLoggingOut, error }) {
   const [isMounted, setIsMounted] = useState(open);
   const [isVisible, setIsVisible] = useState(false);
 
@@ -85,6 +85,38 @@ function SettingsDrawer({ open, onClose, onChangePin, onLogout, logoutLabel, isL
             <span className={styles.itemLeft}>
               <KeyRound size={16} strokeWidth={1.8} />
               Change PIN
+            </span>
+            <ChevronRight size={16} strokeWidth={1.8} />
+          </button>
+
+          <button type="button" className={styles.item} onClick={() => onComingSoon('Profile picture')}>
+            <span className={styles.itemLeft}>
+              <Camera size={16} strokeWidth={1.8} />
+              Upload profile picture
+            </span>
+            <ChevronRight size={16} strokeWidth={1.8} />
+          </button>
+
+          <button type="button" className={styles.item} onClick={() => onComingSoon('Payment methods')}>
+            <span className={styles.itemLeft}>
+              <Landmark size={16} strokeWidth={1.8} />
+              Payment methods
+            </span>
+            <ChevronRight size={16} strokeWidth={1.8} />
+          </button>
+
+          <button type="button" className={styles.item} onClick={() => onComingSoon('Security & privacy')}>
+            <span className={styles.itemLeft}>
+              <ShieldCheck size={16} strokeWidth={1.8} />
+              Security & privacy
+            </span>
+            <ChevronRight size={16} strokeWidth={1.8} />
+          </button>
+
+          <button type="button" className={styles.item} onClick={() => onComingSoon('Help & support')}>
+            <span className={styles.itemLeft}>
+              <HelpCircle size={16} strokeWidth={1.8} />
+              Help & support
             </span>
             <ChevronRight size={16} strokeWidth={1.8} />
           </button>

@@ -29,6 +29,7 @@ export const ROUTES = {
   FUND: '/fund',
   RECEIVE: '/receive',
   SEND: '/send',
+  COMING_SOON: '/coming-soon',
 };
 
 /** Routes that require an unlocked wallet, used by the lock gate. */

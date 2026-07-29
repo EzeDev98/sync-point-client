@@ -46,6 +46,7 @@ function VerifyResetOtp() {
           Enter the verification code sent to <strong>{maskPhoneNumber(phoneNumber)}</strong>
         </>
       }
+      onBack={() => navigate('/forgot-password')} backLabel="Back"
       onSubmit={otpState.handleSubmit}
       footer={
         otpState.secondsLeft > 0 ? (

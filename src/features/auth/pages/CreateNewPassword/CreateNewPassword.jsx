@@ -87,6 +87,12 @@ function CreateNewPassword() {
       <FormScreen
         title="Create a new password"
         subtitle="Choose a strong password for your account."
+
+        onBack={() => {
+          clearPasswordResetState();
+          navigate('/forgot-password');
+        }}
+        backLabel="Back"
         onSubmit={handleSubmit}
       >
         <TextField

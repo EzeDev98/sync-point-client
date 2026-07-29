@@ -302,6 +302,10 @@ function Dashboard() {
           setIsSettingsOpen(false);
           navigate('/change-pin');
         }}
+        onComingSoon={(featureName) => {
+          setIsSettingsOpen(false);
+          navigate('/coming-soon', { state: { featureName } });
+        }}
         onLogout={handleLogout}
         isLoggingOut={isLoggingOut}
         logoutLabel={

@@ -67,6 +67,7 @@ function ChangePin() {
     <FormScreen
       title="Change your PIN"
       subtitle="Enter your current PIN, then choose a new 4-digit transaction PIN"
+      onBack={() => navigate('/dashboard')} backLabel="Back to dashboard"
       onSubmit={handleSubmit}
     >
       <PinField

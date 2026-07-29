@@ -1,5 +1,7 @@
+
 import { Card } from '@shared/components/ui';
 import { ScreenContainer } from '@shared/components/layout';
+import BackButton from '../BackButton/BackButton.jsx';
 import styles from './FormScreen.module.css';
 
 /**
@@ -27,6 +29,8 @@ function FormScreen({
   wide = false,
   scrollable = false,
   onSubmit,
+  onBack,
+  backLabel,
 }) {
   const card = (
     <Card wide={wide}>
@@ -52,11 +56,25 @@ function FormScreen({
     </Card>
   );
 
-  if (scrollable) {
-    return <div className={styles.scrollableScreen}>{card}</div>;
-  }
+  const backButton = onBack && (
+      <BackButton onClick={onBack} label={backLabel} className={styles.backButton} />
+    );
 
-  return <ScreenContainer>{card}</ScreenContainer>;
+    if (scrollable) {
+      return (
+        <div className={styles.scrollableScreen}>
+          {backButton}
+          {card}
+        </div>
+      );
+    }
+
+    return (
+      <ScreenContainer>
+        {backButton}
+        {card}
+      </ScreenContainer>
+    );
 }
 
 export default FormScreen;
