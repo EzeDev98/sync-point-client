@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { Button, Modal } from '@shared/components/ui';
+import { FloatingRefreshButton } from '@shared/components/feedback';
 import { PAYMENT_LIMITS } from '@features/wallet/utils/paymentRequest';
 import { useUpdateReminder } from '@features/device/hooks/useUpdateReminder';
 import { usePeriodicSync } from '@features/sync/hooks/usePeriodicSync';
@@ -36,7 +37,7 @@ function App() {
     <BrowserRouter>
       <AppLockGate />
       <AppRouter />
-
+      <FloatingRefreshButton />
       <Modal
         open={update.isAvailable}
         icon="⬆️"
