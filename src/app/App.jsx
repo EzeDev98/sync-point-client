@@ -32,6 +32,15 @@ function App() {
     };
   }, []);
 
+  useEffect(() => {
+    function setViewportHeight() {
+      document.documentElement.style.setProperty('--app-vh', `${window.innerHeight * 0.01}px`);
+    }
+    setViewportHeight();
+    window.addEventListener('resize', setViewportHeight);
+    return () => window.removeEventListener('resize', setViewportHeight);
+  }, []);
+
   const handleOfflineReminder = useCallback((pendingCount) => {
     setSyncReminder({ pendingCount });
   }, []);
