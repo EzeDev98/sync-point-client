@@ -24,6 +24,7 @@ const STATIC_ASSETS = [
   '/icons/icon-192x192.png',
   '/icons/icon-512x512.png',
   '/icons/favicon.ico',
+  '/icons/new-logo.png',
   ...(Array.isArray(HASHED_ASSETS) ? HASHED_ASSETS : []),
 ];
 

@@ -1,6 +1,7 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { Button, Modal } from '@shared/components/ui';
+import { SplashScreen } from '@shared/components/branding';
 import { FloatingRefreshButton } from '@shared/components/feedback';
 import { PAYMENT_LIMITS } from '@features/wallet/utils/paymentRequest';
 import { useUpdateReminder } from '@features/device/hooks/useUpdateReminder';
@@ -20,6 +21,16 @@ import AppRouter from '@app/router/AppRouter.jsx';
  */
 function App() {
   const [syncReminder, setSyncReminder] = useState(null);
+  const [splashPhase, setSplashPhase] = useState('visible');
+
+  useEffect(() => {
+    const exitTimer = setTimeout(() => setSplashPhase('exiting'), 850);
+    const hideTimer = setTimeout(() => setSplashPhase('hidden'), 1050);
+    return () => {
+      clearTimeout(exitTimer);
+      clearTimeout(hideTimer);
+    };
+  }, []);
 
   const handleOfflineReminder = useCallback((pendingCount) => {
     setSyncReminder({ pendingCount });
@@ -30,11 +41,11 @@ function App() {
   useSessionExpiry();
   usePeriodicSync({ onOfflineReminder: handleOfflineReminder });
 
-  const isAtOfflineLimit =
-    (syncReminder?.pendingCount ?? 0) >= PAYMENT_LIMITS.MAX_OFFLINE_PENDING;
+  const isAtOfflineLimit = (syncReminder?.pendingCount ?? 0) >= PAYMENT_LIMITS.MAX_OFFLINE_PENDING;
 
   return (
     <BrowserRouter>
+      {splashPhase !== 'hidden' && <SplashScreen exiting={splashPhase === 'exiting'} />}
       <AppLockGate />
       <AppRouter />
       <FloatingRefreshButton />
@@ -60,8 +71,7 @@ function App() {
         You have {syncReminder?.pendingCount} transaction
         {syncReminder?.pendingCount === 1 ? '' : 's'} waiting to sync. Connect to the
         internet soon so they do not get stuck.
-        {isAtOfflineLimit &&
-          ' You have reached the maximum offline limit — you must go online to sync before creating any new transactions.'}
+        {isAtOfflineLimit && ' You have reached the maximum offline limit — you must go online to sync before creating any new transactions.'}
       </Modal>
     </BrowserRouter>
   );

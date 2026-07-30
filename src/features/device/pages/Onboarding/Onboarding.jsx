@@ -1,9 +1,9 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@shared/components/ui';
-import { AppLogo } from '@shared/components/branding';
 import { isPWAInstalled } from '@features/device/services/deviceCompatibility';
 import { ROUTES } from '@app/router/routes';
+import { ArrowRight } from 'lucide-react';
 import styles from './Onboarding.module.css';
 
 /**
@@ -47,7 +47,6 @@ function Onboarding() {
     <div className={styles.screen}>
       <div className={styles.card}>
         <div className={styles.brand}>
-          <AppLogo size={64} />
           <h1 className={styles.appName}>SyncPoint</h1>
           <p className={styles.tagline}>
             Send and receive money even without internet.
@@ -72,7 +71,10 @@ function Onboarding() {
           <p className={styles.ctaHint}>
             SyncPoint works as an installed app for the full offline experience.
           </p>
-          <Button onClick={() => navigate(ROUTES.INSTALL)}>Get started →</Button>
+          <Button onClick={() => navigate(ROUTES.INSTALL)}>
+            Get started
+            <ArrowRight size={16} className={styles.ctaArrow} />
+          </Button>
         </div>
       </div>
     </div>

@@ -91,3 +91,31 @@
   color: var(--color-text-muted);
   text-align: center;
 }
+
+.cta button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-8);
+}
+
+.ctaArrow {
+  flex-shrink: 0;
+  animation: nudgeRight 1.4s ease-in-out infinite;
+}
+
+@keyframes nudgeRight {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  50% {
+    transform: translateX(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ctaArrow {
+    animation: none;
+  }
+}
