@@ -7,10 +7,17 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  justify-content: center;
   gap: var(--space-20);
   min-height: 0;
   padding: var(--space-24) 0;
+}
+
+.body > *:first-child {
+  margin-top: auto;
+}
+
+.body > *:last-child {
+  margin-bottom: auto;
 }
 
 .divider {
@@ -62,9 +69,8 @@
 
 .pinScreen {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: calc(100svh - var(--header-height));
+  min-height: calc(100vh - var(--header-height));
+  min-height: calc(100dvh - var(--header-height));
   padding: var(--space-24) var(--space-20);
 }
 
@@ -74,6 +80,7 @@
   gap: var(--space-24);
   width: 100%;
   max-width: 340px;
+  margin: auto;
 }
 
 .pinHeader {
@@ -120,7 +127,6 @@
   flex: 1;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   gap: var(--space-16);
   width: 100%;
   max-width: 380px;
@@ -128,6 +134,14 @@
   margin: 0 auto;
   padding: var(--space-24) var(--space-20);
   text-align: center;
+}
+
+.completeScreen > *:first-child {
+  margin-top: auto;
+}
+
+.completeScreen > *:last-child {
+  margin-bottom: auto;
 }
 
 .completeCard {
