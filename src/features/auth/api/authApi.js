@@ -46,7 +46,7 @@ export function checkPinSet(walletId) {
 }
 
 export function logoutUser() {
-  return http.post('/user/logout', undefined, {
+  return http.post('/logout/user', undefined, {
     auth: true,
     fallback: 'Logout failed. Please try again.',
   });
