@@ -12,6 +12,7 @@ export const ROUTES = {
   OFFLINE: '/offline',
 
   REGISTER: '/register',
+  VERIFY_ACCOUNT: '/verify-account',
   LOGIN: '/login',
   FORGOT_PASSWORD: '/forgot-password',
   VERIFY_RESET_OTP: '/forgot-password/verify',

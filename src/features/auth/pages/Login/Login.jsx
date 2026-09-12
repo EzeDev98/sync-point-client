@@ -13,6 +13,7 @@ import { UpdateModal } from '@shared/components/feedback';
 import { useNetwork } from '@shared/hooks/useNetwork';
 import { getIsOnline } from '@core/network/networkService';
 import { checkPinSet, loginUser } from '@features/auth/api/authApi';
+import { setPendingVerification } from '@features/auth/state/accountVerificationState';
 import { persistValue, hasResumableSession } from '@features/auth/services/sessionManager';
 import { refreshOnStartup } from '@features/auth/services/tokenStore';
 import { restoreQuarantineIfPresent } from '@features/device/services/quarantineService';
@@ -194,6 +195,9 @@ function Login() {
       console.error('Login error:', err);
       if (err.status === 409) {
         setDialog({ kind: 'activeSession' });
+      } else if (err.status === 403) {
+        setPendingVerification(formData.phoneNumber);
+        navigate('/verify-account');
       } else {
         setDialog({
           kind: 'error',

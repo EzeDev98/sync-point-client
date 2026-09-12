@@ -11,6 +11,7 @@ import {
 } from '@shared/components/ui';
 import { useNetwork } from '@shared/hooks/useNetwork';
 import { registerUser } from '@features/auth/api/authApi';
+import { setPendingVerification } from '@features/auth/state/accountVerificationState';
 import { FormScreen } from '@shared/components/layout';
 import StepIndicator from '@features/auth/components/StepIndicator/StepIndicator.jsx';
 import {
@@ -136,9 +137,8 @@ function Register() {
 
     try {
       await registerUser(formData);
-      navigate('/login', {
-        state: { message: 'Registration successful. Please sign in.' },
-      });
+      setPendingVerification(formData.phoneNumber);
+      navigate('/verify-account');
     } catch (err) {
       console.error('Registration error:', err);
       setErrors({

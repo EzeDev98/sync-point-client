@@ -4,6 +4,7 @@ import {
   ForgotPassword,
   Login,
   Register,
+  VerifyAccount,
   VerifyResetOtp,
   Welcome,
 } from '@features/auth';
@@ -45,6 +46,7 @@ const ROUTE_CONFIG = [
   { path: ROUTES.OFFLINE, element: <Offline />, installed: true },
 
   { path: ROUTES.REGISTER, element: <Register />, installed: true },
+  { path: ROUTES.VERIFY_ACCOUNT, element: <VerifyAccount />, installed: true },
   { path: ROUTES.LOGIN, element: <Login />, installed: true },
   { path: ROUTES.FORGOT_PASSWORD, element: <ForgotPassword />, installed: true },
   { path: ROUTES.VERIFY_RESET_OTP, element: <VerifyResetOtp />, installed: true },

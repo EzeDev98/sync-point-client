@@ -1,0 +1,27 @@
+/*
+  "or" divider between the OTP-submit path and the email-continue path.
+*/
+.divider {
+  display: flex;
+  align-items: center;
+  gap: var(--space-12);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border);
+}
+
+.emailHint {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}

@@ -95,3 +95,15 @@ export function verifyPasswordResetOtp(phoneNumber, otp) {
 export function completePasswordReset(resetToken, newPassword, confirmPassword) {
   return http.post('/password-reset/complete', { resetToken, newPassword, confirmPassword });
 }
+
+export function verifyAccountOtp(phoneNumber, otp) {
+  return http.post(
+    '/phone-number/verify',
+    { phoneNumber, otp },
+    { fallback: 'The verification code is invalid.' }
+  );
+}
+
+export function resendAccountVerification(phoneNumber) {
+  return http.post('/phone-number/resend-verification', { phoneNumber });
+}

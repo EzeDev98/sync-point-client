@@ -102,8 +102,20 @@ export async function getValidToken() {
   }
 }
 
-/** Forces a refresh when the app resumes, before any protected route loads. */
+/**
+ * Refreshes when the app resumes, before any protected route loads — but
+ * only when the access token is actually close to expiring. This used to
+ * refresh unconditionally on every app open; that was pointless extra
+ * load and a needless race window (two tabs/opens both redeeming the same
+ * refresh token) even now that the server can be configured
+ * non-destructively (Part B) — so it's skipped whenever the current token
+ * is still good.
+ */
 export async function refreshOnStartup() {
+  if (!isAccessTokenExpiringSoon()) {
+    return sessionStorage.getItem('sessionToken');
+  }
+
   if (isRefreshTokenExpired()) {
     await quarantineAndWipeSession();
     throw new Error('REFRESH_EXPIRED');
