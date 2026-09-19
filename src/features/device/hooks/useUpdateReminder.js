@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getIsOnline } from '@core/network/networkService';
-import { checkForUpdate, markPromptSeen } from '@features/device/services/versionService';
+import { checkForUpdate } from '@features/device/services/versionService';
 
 /** How often to check whether a newer build has been deployed. */
 const POLL_INTERVAL_MS = 5 * 60 * 1000;
@@ -12,16 +12,13 @@ const POLL_INTERVAL_MS = 5 * 60 * 1000;
  * because pending transactions would be lost, so this just prompts the user
  * to sync and sign out. Login applies the update itself.
  *
- * Dismissing records the build id, so the same version is not raised again
- * this session. Without that, the five-minute poll re-opened the modal
- * indefinitely: versionService checked for a dismissal that nothing ever
- * wrote.
+ * Dismissing only closes the modal for now — it is not persisted, so the
+ * next poll re-opens it while the update is still pending. That repetition
+ * is intentional: this is meant to keep reminding the user until they
+ * actually sign out and update.
  */
 export function useUpdateReminder() {
   const [isAvailable, setIsAvailable] = useState(false);
-
-  // Held in a ref because dismiss() needs it without re-running the poll.
-  const remoteBuildIdRef = useRef(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -31,10 +28,9 @@ export function useUpdateReminder() {
       if (!localStorage.getItem('walletId')) return;
 
       try {
-        const { updateAvailable, remoteBuildId } = await checkForUpdate();
+        const { updateAvailable } = await checkForUpdate();
 
         if (!cancelled && updateAvailable) {
-          remoteBuildIdRef.current = remoteBuildId;
           setIsAvailable(true);
         }
       } catch (err) {
@@ -52,9 +48,6 @@ export function useUpdateReminder() {
   }, []);
 
   const dismiss = useCallback(() => {
-    if (remoteBuildIdRef.current) {
-      markPromptSeen(remoteBuildIdRef.current);
-    }
     setIsAvailable(false);
   }, []);
 

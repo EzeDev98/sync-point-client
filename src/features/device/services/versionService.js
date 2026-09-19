@@ -5,7 +5,6 @@
 
 const CURRENT_BUILD_ID = typeof __APP_BUILD_ID__ !== 'undefined' ? __APP_BUILD_ID__ : 'dev';
 const VERSION_URL = '/version.json';
-const SEEN_PROMPT_KEY = 'sp_update_prompt_seen_for_build';
 
 /**
  * Cache-busted on purpose. The service worker caches aggressively, and a
@@ -42,12 +41,12 @@ export async function fetchRemoteBuildId() {
 }
 
 /**
- * True when a newer build exists and the user has not already dismissed the
- * prompt for that same build this session.
+ * True whenever a newer build exists than the one currently running.
  *
- * The dismissal half depends on callers invoking markPromptSeen() — see
- * useUpdateReminder.dismiss(). Session-scoped on purpose: a new tab should
- * be reminded again, since the update is still pending.
+ * Intentionally not session-suppressed: the modal is meant to keep
+ * re-surfacing on every poll (see useUpdateReminder) until the user signs
+ * out and updates, so a newer remoteBuildId is reported every time it's
+ * still there, not just once.
  */
 export async function checkForUpdate() {
   const remoteBuildId = await fetchRemoteBuildId();
@@ -56,15 +55,7 @@ export async function checkForUpdate() {
     return { updateAvailable: false };
   }
 
-  if (sessionStorage.getItem(SEEN_PROMPT_KEY) === remoteBuildId) {
-    return { updateAvailable: false };
-  }
-
   return { updateAvailable: true, remoteBuildId };
-}
-
-export function markPromptSeen(remoteBuildId) {
-  sessionStorage.setItem(SEEN_PROMPT_KEY, remoteBuildId);
 }
 
 export function getCurrentBuildId() {
