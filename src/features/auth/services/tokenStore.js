@@ -49,14 +49,19 @@ function doRefresh() {
 
   refreshPromise = refreshToken()
     .then((data) => {
-      const accessToken = data.access_token;
+      // The SyncPoint server returns internal-auth's camelCase shape; snake_case is what
+      // Keycloak used to send, kept as a fallback.
+      const accessToken = data.accessToken ?? data.access_token;
+      const newRefreshToken = data.refreshToken ?? data.refresh_token;
+      const expiresIn = data.expiresIn ?? data.expires_in;
+      const refreshExpiresIn = data.refreshExpiresIn ?? data.refresh_expires_in;
       if (!accessToken) throw new Error('No access token in refresh response');
 
       sessionStorage.setItem('sessionToken', accessToken);
-      sessionStorage.setItem('accessTokenExpiresIn', data.expires_in);
+      sessionStorage.setItem('accessTokenExpiresIn', expiresIn);
 
-      persistValue('refreshToken', data.refresh_token);
-      persistValue('refreshTokenExpiresIn', data.refresh_expires_in);
+      if (newRefreshToken) persistValue('refreshToken', newRefreshToken);
+      if (refreshExpiresIn != null) persistValue('refreshTokenExpiresIn', refreshExpiresIn);
       persistValue('tokenIssuedAt', Date.now().toString());
 
       return accessToken;

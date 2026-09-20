@@ -6,7 +6,8 @@ import { useNetwork } from '@shared/hooks/useNetwork';
 import { verifyWalletPin } from '@features/pin/api/pinApi';
 import { readPersisted } from '@features/auth/services/sessionManager';
 import { saveOfflinePinVerifier } from '@core/crypto/pinVerifier';
-import { verifyOfflinePin } from '@core/crypto/pinVerifier';
+import { hasOfflinePinVerifier, verifyOfflinePin } from '@core/crypto/pinVerifier';
+import { ApiError } from '@core/http/ApiError';
 import {
   initializeEncryption,
   isEncryptionReady,
@@ -109,6 +110,23 @@ function PinVerification() {
     }
   }
 
+  /**
+   * Checks the PIN locally when asked to, or against the server otherwise. If the server can't be
+   * reached (or answers 5xx/401) and this device holds a PIN verifier, it falls back to the local
+   * check, so a bad connection never locks the user out of their own wallet.
+   */
+  async function checkPin(enteredPin, useLocal) {
+    if (useLocal) return verifyOfflinePin(enteredPin);
+    try {
+      return await verifyWalletPin(walletId, enteredPin);
+    } catch (err) {
+      const serverUnavailable =
+        err instanceof ApiError && (err.status === undefined || err.status >= 500 || err.status === 401);
+      if (serverUnavailable && hasOfflinePinVerifier()) return verifyOfflinePin(enteredPin);
+      throw err;
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
 
@@ -128,10 +146,7 @@ function PinVerification() {
       const isQuickRelock =
         sessionStorage.getItem('walletLocked') === 'true' && isEncryptionReady();
 
-      const isValid =
-        isQuickRelock || isOffline
-          ? await verifyOfflinePin(pin)
-          : await verifyWalletPin(walletId, pin);
+      const isValid = await checkPin(pin, isQuickRelock || isOffline);
 
       if (!isValid) {
         setErrors({ pin: 'Invalid PIN. Please try again.' });

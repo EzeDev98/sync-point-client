@@ -70,8 +70,16 @@ function Login() {
       try {
         await refreshOnStartup();
         navigate('/verifypin', { replace: true });
-      } catch {
-        setIsCheckingSession(false);
+      } catch (err) {
+        // Only a session the server has actually ended (refresh token rejected or expired) falls
+        // through to sign-in. A network or server hiccup keeps the session: the PIN screen unlocks
+        // locally, and signing in again would be refused while this device's session is still active.
+        const sessionIsOver = ['REFRESH_INVALID', 'REFRESH_EXPIRED', 'NO_REFRESH_TOKEN'].includes(err?.message);
+        if (sessionIsOver) {
+          setIsCheckingSession(false);
+        } else {
+          navigate('/verifypin', { replace: true });
+        }
       }
     }
 
