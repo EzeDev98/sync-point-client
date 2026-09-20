@@ -88,6 +88,11 @@ export async function restoreQuarantineIfPresent(walletId) {
 
   // Only the key material is restored. Profile fields come from the fresh
   // sign-in response, which is authoritative and may have changed.
+  // A stale salt left on this device must never pair with a restored key.
+  if (entry.persistedData.wrappedDEK !== undefined) {
+    localStorage.removeItem('kek_salt');
+  }
+
   for (const key of KEY_MATERIAL_KEYS) {
     if (entry.persistedData[key] !== undefined) {
       localStorage.setItem(key, entry.persistedData[key]);

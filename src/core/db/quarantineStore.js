@@ -90,3 +90,9 @@ export async function deleteQuarantineEntry(walletId) {
     store.delete(walletId);
   });
 }
+export function getAllQuarantineEntries() {
+  return withQuarantineStore('readonly', (store, setResult) => {
+    const request = store.getAll();
+    request.onsuccess = () => setResult(request.result || []);
+  });
+}

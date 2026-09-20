@@ -46,27 +46,31 @@ export function seedAppliedBuildId() {
  * hits the SPA fallback and receives index.html, and parsing that as JSON
  * threw on every poll — five minutes apart, forever.
  */
-export async function fetchRemoteBuildId() {
-  if (import.meta.env.DEV) return null;
+export async function fetchRemoteBuild() {
+  if (import.meta.env.DEV) return { buildId: null, failed: false };
 
   try {
     const response = await fetch(`${VERSION_URL}?t=${Date.now()}`, { cache: 'no-store' });
-    if (!response.ok) return null;
+    if (!response.ok) return { buildId: null, failed: true };
 
     // A proxy, an offline fallback or a misconfigured host can answer with
     // HTML and a 200. Checking the type is cheaper than catching the parse.
     const contentType = response.headers.get('content-type') || '';
     if (!contentType.includes('application/json')) {
       console.warn('[versionService] version.json returned', contentType, '— skipping.');
-      return null;
+      return { buildId: null, failed: true };
     }
 
     const data = await response.json();
-    return data.buildId || null;
+    return data.buildId ? { buildId: data.buildId, failed: false } : { buildId: null, failed: true };
   } catch (err) {
     console.warn('[versionService] Could not fetch version.json:', err);
-    return null;
+    return { buildId: null, failed: true };
   }
+}
+
+export async function fetchRemoteBuildId() {
+  return (await fetchRemoteBuild()).buildId;
 }
 
 /**
@@ -78,7 +82,10 @@ export async function fetchRemoteBuildId() {
  * still there, not just once.
  */
 export async function checkForUpdate() {
-  const remoteBuildId = await fetchRemoteBuildId();
+  const { buildId: remoteBuildId, failed } = await fetchRemoteBuild();
+
+  // A failed lookup is reported, not swallowed: the caller can tell "up to date" from "could not check".
+  if (failed) return { updateAvailable: false, checkFailed: true };
 
   // Up to date means BOTH: this bundle is the published one, and this device has applied that
   // build. Without the second half a fresh load of /login never reports an update.

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Button,
@@ -20,11 +20,34 @@ import { restoreQuarantineIfPresent } from '@features/device/services/quarantine
 import { ensureSigningKeyEnrolled } from '@features/wallet/services/signingKeyService';
 import { performHardReset } from '@features/device/services/hardReset';
 import { checkForUpdate } from '@features/device/services/versionService';
+import { getUpdateBlockers } from '@features/device/services/updateGuard';
 import { FormScreen } from '@shared/components/layout';
 import { collectErrors, validatePhoneNumber } from '@features/auth/utils/authValidation';
 import styles from './Login.module.css';
 
 const MANDATORY_POLL_MS = 15_000;
+
+/**
+ * Offered whenever a newer build exists AND wiping this device is safe (nothing unsynced, no
+ * funds that could be on it). notice says why an available update is NOT being offered.
+ */
+async function evaluateUpdate() {
+  const result = await checkForUpdate();
+  if (result.checkFailed) return { show: false, notice: 'checkFailed' };
+  if (!result.updateAvailable) return { show: false, notice: null };
+
+  const blockers = await getUpdateBlockers();
+  if (blockers.blocked) return { show: false, notice: 'blocked' };
+
+  return { show: true, remoteBuildId: result.remoteBuildId, notice: null };
+}
+
+function describeUpdateError(err) {
+  if (err?.message === 'OFFLINE') {
+    return 'You are offline. Connect to the internet and try again.';
+  }
+  return 'The update could not be completed. Please try again.';
+}
 
 function Login() {
   const navigate = useNavigate();
@@ -41,6 +64,11 @@ function Login() {
 
   const [updateInfo, setUpdateInfo] = useState({ show: false, remoteBuildId: null });
   const [isUpdating, setIsUpdating] = useState(false);
+  const [updateError, setUpdateError] = useState('');
+  // Why an available update is not being offered: 'blocked' or 'checkFailed'.
+  const [updateNotice, setUpdateNotice] = useState(null);
+  // True once any stored session is known to be over, i.e. the sign-in form is what the user sees.
+  const sessionOverRef = useRef(false);
 
   // One piece of state for every dialog this page can raise, instead of the
   // four independent booleans the previous version tracked.
@@ -48,41 +76,49 @@ function Login() {
 
   useEffect(() => {
     async function checkUpdateThenSession() {
-      if (getIsOnline()) {
-        const { updateAvailable, remoteBuildId } = await checkForUpdate();
-        // Only a signed-out device is force-updated. A resumable session can still hold unsynced
-        // transactions, and the hard reset would destroy them; the in-app reminder covers that case.
-        if (updateAvailable && !hasResumableSession()) {
-          setUpdateInfo({ show: true, remoteBuildId });
-          setIsCheckingSession(false);
+      if (!getIsOnline()) {
+        if (hasResumableSession()) {
+          navigate('/verifypin', { replace: true });
           return;
         }
-      }
-
-      if (!hasResumableSession()) {
+        sessionOverRef.current = true;
         setIsCheckingSession(false);
         return;
       }
 
-      if (!getIsOnline()) {
+      // Settle first whether a stored session is still alive. A dead or revoked one must not
+      // stop the update prompt; a live one goes straight to the PIN screen and is never wiped.
+      let sessionIsOver = !hasResumableSession();
+
+      if (!sessionIsOver) {
+        try {
+          await refreshOnStartup();
+        } catch (err) {
+          // Only a session the server has actually ended falls through to sign-in. A network or
+          // server hiccup keeps the session: the PIN screen unlocks locally.
+          sessionIsOver = ['REFRESH_INVALID', 'REFRESH_EXPIRED', 'NO_REFRESH_TOKEN'].includes(
+            err?.message
+          );
+        }
+      }
+
+      if (!sessionIsOver) {
         navigate('/verifypin', { replace: true });
         return;
       }
 
+      sessionOverRef.current = true;
+
       try {
-        await refreshOnStartup();
-        navigate('/verifypin', { replace: true });
+        const outcome = await evaluateUpdate();
+        setUpdateNotice(outcome.notice);
+        if (outcome.show) setUpdateInfo({ show: true, remoteBuildId: outcome.remoteBuildId });
       } catch (err) {
-        // Only a session the server has actually ended (refresh token rejected or expired) falls
-        // through to sign-in. A network or server hiccup keeps the session: the PIN screen unlocks
-        // locally, and signing in again would be refused while this device's session is still active.
-        const sessionIsOver = ['REFRESH_INVALID', 'REFRESH_EXPIRED', 'NO_REFRESH_TOKEN'].includes(err?.message);
-        if (sessionIsOver) {
-          setIsCheckingSession(false);
-        } else {
-          navigate('/verifypin', { replace: true });
-        }
+        console.warn('[Login] Update check failed:', err);
+        setUpdateNotice('checkFailed');
       }
+
+      setIsCheckingSession(false);
     }
 
     checkUpdateThenSession();
@@ -96,12 +132,14 @@ function Login() {
     let cancelled = false;
 
     async function poll() {
-      if (!getIsOnline()) return;
+      // Only while the sign-in form is what the user is looking at.
+      if (!sessionOverRef.current || !getIsOnline()) return;
+
       try {
-        const { updateAvailable, remoteBuildId } = await checkForUpdate();
-        if (!cancelled && updateAvailable && !hasResumableSession()) {
-          setUpdateInfo({ show: true, remoteBuildId });
-        }
+        const outcome = await evaluateUpdate();
+        if (cancelled) return;
+        setUpdateNotice(outcome.notice);
+        if (outcome.show) setUpdateInfo({ show: true, remoteBuildId: outcome.remoteBuildId });
       } catch (err) {
         console.warn('[Login] Mandatory update check failed:', err);
       }
@@ -123,10 +161,20 @@ function Login() {
 
   async function handleUpdateNow() {
     setIsUpdating(true);
+    setUpdateError('');
     try {
       await performHardReset(updateInfo.remoteBuildId);
     } catch (err) {
       console.error('[Login] Hard reset failed:', err);
+
+      if (err?.message === 'UNSYNCED_DATA') {
+        // Data appeared since the prompt was shown: stand down instead of wiping it.
+        setUpdateInfo({ show: false, remoteBuildId: null });
+        setUpdateNotice('blocked');
+      } else {
+        setUpdateError(describeUpdateError(err));
+      }
+
       setIsUpdating(false);
     }
   }
@@ -231,7 +279,7 @@ function Login() {
   if (updateInfo.show) {
     return (
       <FormScreen>
-        <UpdateModal onUpdate={handleUpdateNow} isUpdating={isUpdating} mandatory />
+        <UpdateModal onUpdate={handleUpdateNow} isUpdating={isUpdating} error={updateError} mandatory />
       </FormScreen>
     );
   }
@@ -243,10 +291,25 @@ function Login() {
         subtitle="Sign in to your account"
         onSubmit={handleSubmit}
         banner={
-          isOffline && (
-            <InfoBanner tone="warning">
-              📡 You are offline. Connect to the internet to sign in.
-            </InfoBanner>
+          (isOffline || updateNotice) && (
+            <>
+              {isOffline && (
+                <InfoBanner tone="warning">
+                  📡 You are offline. Connect to the internet to sign in.
+                </InfoBanner>
+              )}
+              {updateNotice === 'blocked' && (
+                <InfoBanner tone="warning">
+                  ⬆️ An update is available, but this device still holds unsynced transactions or
+                  offline funds. Sign in, sync, and sign out to update.
+                </InfoBanner>
+              )}
+              {updateNotice === 'checkFailed' && !isOffline && (
+                <InfoBanner tone="warning">
+                  Could not check for updates. Retrying automatically.
+                </InfoBanner>
+              )}
+            </>
           )
         }
         footer={

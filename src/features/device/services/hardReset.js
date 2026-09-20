@@ -1,5 +1,6 @@
 import { getIsOnline } from '@core/network/networkService';
 import { fetchRemoteBuildId, markBuildApplied } from '@features/device/services/versionService';
+import { getUpdateBlockers } from '@features/device/services/updateGuard';
 
 /**
  * Destructive wipe of everything this origin owns, followed by a reload.
@@ -66,6 +67,11 @@ function clearWebStorage() {
 export async function performHardReset(targetBuildId) {
   if (!getIsOnline()) {
     throw new Error('OFFLINE');
+  }
+
+  // Last line of defence: never wipe a device that still holds unsynced transfers or possible funds.
+  if ((await getUpdateBlockers()).blocked) {
+    throw new Error('UNSYNCED_DATA');
   }
 
   // Resolved before anything is wiped, so a failed lookup cannot leave a half-reset device.

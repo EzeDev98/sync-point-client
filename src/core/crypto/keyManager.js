@@ -35,7 +35,7 @@ const KEK_SALT_STORAGE_KEY = 'kek_salt';
  * migrateLegacySalt below).
  *
  * Once enough time has passed that active devices have all unlocked at
- * least once, delete this constant and the legacy branch in readKekSalt().
+ * least once, delete this constant and the legacy branch in readKeyMaterial().
  * Leaving it in place keeps the weak path alive indefinitely.
  */
 const LEGACY_KEK_SALT = 'syncpoint-kek-salt-v1';
@@ -50,28 +50,56 @@ function readWrappedDek() {
   );
 }
 
-function writeWrappedDek(wrapped) {
-  localStorage.setItem(WRAPPED_DEK_STORAGE_KEY, bytesToBase64(wrapped));
+const WRAPPED_V2_PREFIX = 'v2:';
+
+/**
+ * Stores the wrapped data key TOGETHER with the salt that derived its KEK,
+ * as one localStorage value: "v2:<saltBase64>:<wrappedBase64>".
+ *
+ * They used to live under two keys (wrappedDEK + kek_salt). Anything that
+ * copied, wiped or restored one without the other left a wrapped key that
+ * could never be opened again. One value cannot be half-written or
+ * half-restored.
+ */
+function writeWrappedDek(wrapped, salt) {
+  localStorage.setItem(
+    WRAPPED_DEK_STORAGE_KEY,
+    `${WRAPPED_V2_PREFIX}${bytesToBase64(salt)}:${bytesToBase64(wrapped)}`
+  );
+  // The separate salt key is obsolete; never leave a stale one behind.
+  localStorage.removeItem(KEK_SALT_STORAGE_KEY);
 }
 
 function createSalt() {
-  const salt = crypto.getRandomValues(new Uint8Array(SALT_LENGTH_BYTES));
-  localStorage.setItem(KEK_SALT_STORAGE_KEY, bytesToBase64(salt));
-  return salt;
+  return crypto.getRandomValues(new Uint8Array(SALT_LENGTH_BYTES));
 }
 
 /**
- * Returns this device's salt, or the legacy constant when none is stored.
+ * Reads the stored key and the salt that belongs to it.
  *
- * A missing salt means the install predates the per-device scheme, so its
- * wrapped key can only be opened with the old constant.
+ * needsMigration is true for the two older layouts: a bare wrapped key with a
+ * separate kek_salt, or one with no salt at all (the fixed legacy constant).
+ * Both are opened once and re-saved in the bundled format.
  */
-function readKekSalt() {
-  const stored = localStorage.getItem(KEK_SALT_STORAGE_KEY);
+function readKeyMaterial() {
+  const stored = readWrappedDek();
+  if (!stored) return null;
 
-  if (stored) return { salt: base64ToBytes(stored), isLegacy: false };
+  if (stored.startsWith(WRAPPED_V2_PREFIX)) {
+    const [saltB64, wrappedB64] = stored.slice(WRAPPED_V2_PREFIX.length).split(':');
+    return {
+      wrapped: base64ToBytes(wrappedB64),
+      salt: base64ToBytes(saltB64),
+      needsMigration: false,
+    };
+  }
 
-  return { salt: encodeUtf8(LEGACY_KEK_SALT), isLegacy: true };
+  const separateSalt = localStorage.getItem(KEK_SALT_STORAGE_KEY);
+  return {
+    wrapped: base64ToBytes(stored),
+    salt: separateSalt ? base64ToBytes(separateSalt) : encodeUtf8(LEGACY_KEK_SALT),
+    needsMigration: true,
+  };
 }
 
 /** Derives the key-encryption key from a PIN and salt. Pure — no state touched. */
@@ -105,11 +133,12 @@ async function deriveKek(pin, salt) {
  */
 async function migrateLegacySalt(pin, extractableDek) {
   try {
-    const newKek = await deriveKek(pin, createSalt());
-    writeWrappedDek(await crypto.subtle.wrapKey('raw', extractableDek, newKek, { name: 'AES-KW' }));
-    console.log('[keyManager] Migrated to a per-device salt.');
+    const salt = createSalt();
+    const newKek = await deriveKek(pin, salt);
+    writeWrappedDek(await crypto.subtle.wrapKey('raw', extractableDek, newKek, { name: 'AES-KW' }), salt);
+    console.log('[keyManager] Migrated to a bundled per-device salt.');
   } catch (err) {
-    localStorage.removeItem(KEK_SALT_STORAGE_KEY);
+    // Nothing was written, so the old layout is intact and still opens.
     console.warn('[keyManager] Salt migration failed, will retry next unlock:', err);
   }
 }
@@ -139,9 +168,10 @@ export async function initializeEncryption(pin) {
   // Extractable only so it can be wrapped; the copy kept in memory below is
   // imported separately as non-extractable.
   const wrappable = await importDataKey(rawDek, { extractable: true });
-  const kek = await deriveKek(pin, createSalt());
+  const salt = createSalt();
+  const kek = await deriveKek(pin, salt);
 
-  writeWrappedDek(await crypto.subtle.wrapKey('raw', wrappable, kek, { name: 'AES-KW' }));
+  writeWrappedDek(await crypto.subtle.wrapKey('raw', wrappable, kek, { name: 'AES-KW' }), salt);
 
   dataKey = await importDataKey(rawDek);
 
@@ -155,27 +185,26 @@ export async function initializeEncryption(pin) {
  * unwrapped one did not survive the page being closed.
  */
 export async function restoreEncryption(pin) {
-  const wrapped = readWrappedDek();
+  const material = readKeyMaterial();
 
-  if (!wrapped) {
+  if (!material) {
     throw new Error('restoreEncryption: No wrapped key found — sign in again.');
   }
 
-  const { salt, isLegacy } = readKekSalt();
-  const kek = await deriveKek(pin, salt);
+  const kek = await deriveKek(pin, material.salt);
 
-  // Extractable only on the legacy path, where it has to be re-wrapped.
+  // Extractable only when it has to be re-saved in the bundled format.
   const unwrapped = await crypto.subtle.unwrapKey(
     'raw',
-    base64ToBytes(wrapped),
+    material.wrapped,
     kek,
     { name: 'AES-KW' },
     { name: 'AES-GCM', length: 256 },
-    isLegacy,
+    material.needsMigration,
     ['encrypt', 'decrypt']
   );
 
-  if (isLegacy) {
+  if (material.needsMigration) {
     await migrateLegacySalt(pin, unwrapped);
     // Re-import non-extractable before keeping it in memory.
     dataKey = await importDataKey(await crypto.subtle.exportKey('raw', unwrapped));
@@ -196,20 +225,19 @@ export async function restoreEncryption(pin) {
  * AES-KW verifies an integrity tag, so a wrong old PIN fails here.
  */
 export async function rotateEncryptionPin(oldPin, newPin) {
-  const wrapped = readWrappedDek();
+  const material = readKeyMaterial();
 
-  if (!wrapped) {
+  if (!material) {
     throw new Error('rotateEncryptionPin: No wrapped key found — sign in again.');
   }
 
-  const { salt: currentSalt } = readKekSalt();
-  const oldKek = await deriveKek(oldPin, currentSalt);
+  const oldKek = await deriveKek(oldPin, material.salt);
   let extractableDek;
 
   try {
     extractableDek = await crypto.subtle.unwrapKey(
       'raw',
-      base64ToBytes(wrapped),
+      material.wrapped,
       oldKek,
       { name: 'AES-KW' },
       { name: 'AES-GCM', length: 256 },
@@ -220,9 +248,10 @@ export async function rotateEncryptionPin(oldPin, newPin) {
     throw new Error('rotateEncryptionPin: Could not unwrap the local key with the old PIN.');
   }
 
-  // A PIN change is a free opportunity to leave the legacy salt behind.
-  const newKek = await deriveKek(newPin, createSalt());
-  writeWrappedDek(await crypto.subtle.wrapKey('raw', extractableDek, newKek, { name: 'AES-KW' }));
+  // A PIN change is a free opportunity to move to the bundled format.
+  const newSalt = createSalt();
+  const newKek = await deriveKek(newPin, newSalt);
+  writeWrappedDek(await crypto.subtle.wrapKey('raw', extractableDek, newKek, { name: 'AES-KW' }), newSalt);
 
   // Re-import non-extractable before keeping it in memory.
   dataKey = await importDataKey(await crypto.subtle.exportKey('raw', extractableDek));

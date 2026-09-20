@@ -10,7 +10,7 @@ import Modal from '../../ui/Modal/Modal.jsx';
  * A mandatory update cannot be dismissed, so overlay and Escape dismissal are
  * both disabled in that case.
  */
-function UpdateModal({ onLater, onUpdate, isUpdating, mandatory = false }) {
+function UpdateModal({ onLater, onUpdate, isUpdating, error = '', mandatory = false }) {
   return (
     <Modal
       open
@@ -35,6 +35,13 @@ function UpdateModal({ onLater, onUpdate, isUpdating, mandatory = false }) {
       {mandatory
         ? 'A required update is ready. Update now to continue signing in. If you have another device signed in, make sure it has synced first.'
         : 'A newer version of SyncPoint is available. Updating keeps you on the latest features and security improvements.'}
+      {error && (
+        <span role="alert">
+          <br />
+          <br />
+          {error}
+        </span>
+      )}
     </Modal>
   );
 }
