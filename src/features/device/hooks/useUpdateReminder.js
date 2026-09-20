@@ -3,7 +3,7 @@ import { getIsOnline } from '@core/network/networkService';
 import { checkForUpdate } from '@features/device/services/versionService';
 
 /** How often to check whether a newer build has been deployed. */
-const POLL_INTERVAL_MS = 5 * 60 * 1000;
+const POLL_INTERVAL_MS = 3 * 60 * 1000;
 
 /**
  * Polls for a newer build while the user is signed in.
