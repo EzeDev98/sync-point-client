@@ -9,7 +9,7 @@ import styles from './QrScanner.module.css';
  * The scanner itself is driven by useQrScanner — this component only renders
  * the frame it draws into, identified by `elementId`.
  */
-function QrScanner({ elementId, permission, instruction, hint, onRetryPermission }) {
+function QrScanner({ elementId, permission, error, instruction, hint, onRetryPermission }) {
   if (permission === 'denied') {
     return (
       <Card centered>
@@ -55,10 +55,21 @@ function QrScanner({ elementId, permission, instruction, hint, onRetryPermission
           <div className={[styles.corner, styles.topRight].join(' ')} aria-hidden="true" />
           <div className={[styles.corner, styles.bottomLeft].join(' ')} aria-hidden="true" />
           <div className={[styles.corner, styles.bottomRight].join(' ')} aria-hidden="true" />
-          <div className={styles.scanLine} aria-hidden="true" />
+          {!error && <div className={styles.scanLine} aria-hidden="true" />}
           <div id={elementId} className={styles.reader} />
         </div>
       </div>
+
+      {error && (
+        <Card centered>
+          <p className={styles.blockedBody} role="alert">
+            {error}
+          </p>
+          <Button className={styles.retryButton} onClick={onRetryPermission}>
+            Try again
+          </Button>
+        </Card>
+      )}
 
       {hint && <p className={styles.hint}>{hint}</p>}
     </>

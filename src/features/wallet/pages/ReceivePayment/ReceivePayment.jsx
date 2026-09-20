@@ -177,7 +177,7 @@ function ReceivePayment() {
     }
   }
 
-  const { permission, recheckPermission } = useQrScanner({
+  const { permission, error, recheckPermission } = useQrScanner({
     elementId: SCANNER_ELEMENT_ID,
     active: step === Step.SCAN && isSessionValid,
     onScan: handleScan,
@@ -382,6 +382,7 @@ function ReceivePayment() {
             <QrScanner
               elementId={SCANNER_ELEMENT_ID}
               permission={permission}
+              error={error}
               onRetryPermission={recheckPermission}
               instruction="Ask the sender to show their Payment Sent screen. Point your camera at the QR code on their device."
             />

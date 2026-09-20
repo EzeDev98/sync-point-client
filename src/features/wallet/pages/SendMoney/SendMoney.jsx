@@ -150,7 +150,7 @@ function SendMoney() {
     setStep(Step.REVIEW);
   }
 
-  const { permission, recheckPermission } = useQrScanner({
+  const { permission, error, recheckPermission } = useQrScanner({
     elementId: SCANNER_ELEMENT_ID,
     active: step === Step.SCAN && isSessionValid,
     onScan: handleScan,
@@ -333,6 +333,7 @@ function SendMoney() {
             <QrScanner
               elementId={SCANNER_ELEMENT_ID}
               permission={permission}
+              error={error}
               onRetryPermission={recheckPermission}
               instruction="Ask the receiver to open their Receive page and show you their QR code. Point your camera at it to scan."
               hint="Only scan QR codes from people you trust"

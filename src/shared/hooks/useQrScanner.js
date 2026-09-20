@@ -5,16 +5,17 @@ import { getCameraPermissionState, watchCameraPermission } from '@core/camera/ca
 /**
  * Camera QR scanner lifecycle.
  *
- * SendMoney and ReceivePayment each carried their own copy of this — about
- * ninety lines of refs, promise chaining and teardown, annotated in both
- * files with "identical pattern to the other page". They had already drifted:
- * one logged warnings the other swallowed.
+ * Every operation is queued onto one pending promise, because html5-qrcode
+ * rejects overlapping start()/stop() calls.
  *
- * The promise chain matters and is preserved. html5-qrcode rejects with
- * "already under transition" if start() and stop() overlap, so every
- * operation is queued onto a single pending promise rather than fired
- * directly. The mounted ref guards against a start() that resolves after
- * the component has gone away, which would otherwise leave the camera on.
+ * A scanner instance is never reused. html5-qrcode's stop() throws when it
+ * runs before the video has fired "playing" (its canvas does not exist yet) or
+ * when the element it rendered into has been unmounted. When that happens the
+ * instance is left permanently mid-transition, and every later start() on it
+ * fails with "Cannot clear while scan is ongoing" — the camera never comes on
+ * and only a page reload cleared it. So each start() builds a fresh instance,
+ * and teardown() always discards the old one and releases its camera stream
+ * itself, whether or not the library's own stop() succeeded.
  *
  * @param elementId  DOM id the scanner renders into
  * @param active     whether the scanner should currently be running
@@ -23,9 +24,9 @@ import { getCameraPermissionState, watchCameraPermission } from '@core/camera/ca
 export function useQrScanner({ elementId, active, onScan }) {
   const [permission, setPermission] = useState('checking');
   const [error, setError] = useState('');
+  const [attempt, setAttempt] = useState(0);
 
   const scannerRef = useRef(null);
-  const isRunningRef = useRef(false);
   const isMountedRef = useRef(true);
   const pendingRef = useRef(Promise.resolve());
   const onScanRef = useRef(onScan);
@@ -35,52 +36,54 @@ export function useQrScanner({ elementId, active, onScan }) {
     onScanRef.current = onScan;
   }, [onScan]);
 
-  useEffect(() => {
-    isMountedRef.current = true;
+  // Discards the current scanner and guarantees the camera is released.
+  // Must only be called from inside the queue.
+  const teardown = useCallback(async () => {
+    const scanner = scannerRef.current;
+    scannerRef.current = null;
+    if (!scanner) return;
 
-    return () => {
-      isMountedRef.current = false;
-      pendingRef.current = pendingRef.current
-        .catch(() => {})
-        .then(() => {
-          if (scannerRef.current && isRunningRef.current) {
-            isRunningRef.current = false;
-            return scannerRef.current.stop().catch(() => {});
-          }
-          return undefined;
-        });
-    };
+    const container = scanner.element;
+
+    try {
+      await scanner.stop();
+    } catch (err) {
+      // Expected when stop() raced the video starting; the stream is released below.
+      console.warn('[useQrScanner] stop() warning:', err?.message || err);
+    }
+
+    // The library can throw before or after releasing the stream, so stop any
+    // track still attached to the video it rendered.
+    container?.querySelectorAll?.('video').forEach((video) => {
+      video.srcObject?.getTracks?.().forEach((track) => track.stop());
+      video.srcObject = null;
+    });
+
+    try {
+      scanner.clear();
+    } catch {
+      // Already cleared, or the container is gone.
+    }
   }, []);
 
-  const stop = useCallback(async () => {
-    const operation = pendingRef.current
-      .catch(() => {})
-      .then(async () => {
-        if (scannerRef.current && isRunningRef.current) {
-          isRunningRef.current = false;
-          try {
-            await scannerRef.current.stop();
-          } catch (err) {
-            console.warn('[useQrScanner] stop() warning:', err?.message || err);
-          }
-        }
-      });
-
-    pendingRef.current = operation;
-    await operation;
+  const enqueue = useCallback((operation) => {
+    const next = pendingRef.current.catch(() => {}).then(operation);
+    pendingRef.current = next;
+    return next;
   }, []);
 
-  const start = useCallback(async () => {
-    const operation = pendingRef.current
-      .catch(() => {})
-      .then(async () => {
-        if (!isMountedRef.current || isRunningRef.current) return;
+  const stop = useCallback(() => enqueue(teardown), [enqueue, teardown]);
 
-        if (!scannerRef.current) {
-          scannerRef.current = new Html5Qrcode(elementId);
-        }
+  const start = useCallback(
+    () =>
+      enqueue(async () => {
+        if (!isMountedRef.current || scannerRef.current) return;
+
+        // The viewfinder may have been unmounted between queuing and running.
+        if (!document.getElementById(elementId)) return;
 
         try {
+          scannerRef.current = new Html5Qrcode(elementId);
           await scannerRef.current.start(
             { facingMode: 'environment' },
             { fps: 10, qrbox: { width: 250, height: 250 } },
@@ -88,23 +91,13 @@ export function useQrScanner({ elementId, active, onScan }) {
             () => {} // per-frame decode failures are noise, not errors
           );
 
-          if (isMountedRef.current) {
-            isRunningRef.current = true;
-          } else {
-            await scannerRef.current.stop().catch(() => {});
-          }
+          if (!isMountedRef.current) await teardown();
         } catch (err) {
-          // A start that raced a pending stop is expected, not a failure.
-          if (typeof err?.message === 'string' && err.message.includes('already under transition')) {
-            console.warn('[useQrScanner] start raced a pending transition:', err.message);
-            return;
-          }
-
           console.error('[useQrScanner] Failed to start:', err);
+          await teardown();
           if (!isMountedRef.current) return;
 
-          // html5-qrcode does not reliably preserve DOMException.name, so
-          // any start failure is treated as a permission problem and the
+          // html5-qrcode rejects with plain strings, not DOMExceptions, so the
           // real state is re-derived from the Permissions API where possible.
           const state = await getCameraPermissionState();
           setPermission(state === 'unsupported' ? 'denied' : state);
@@ -114,19 +107,26 @@ export function useQrScanner({ elementId, active, onScan }) {
               : 'Camera failed to start. Please try again.'
           );
         }
-      });
+      }),
+    [elementId, enqueue, teardown]
+  );
 
-    pendingRef.current = operation;
-    await operation;
-  }, [elementId]);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      stop();
+    };
+  }, [stop]);
 
   // Watch permission live, so granting access in the browser's site settings
-  // is picked up without the user having to retry by hand.
+  // is picked up without the user having to retry by hand. The state is not
+  // reset to "checking" on re-activation: that would unmount the viewfinder
+  // while the camera is starting.
   useEffect(() => {
     if (!active) return undefined;
 
     let cancelled = false;
-    setPermission('checking');
 
     getCameraPermissionState().then((state) => {
       if (!cancelled) setPermission(state);
@@ -142,22 +142,23 @@ export function useQrScanner({ elementId, active, onScan }) {
     };
   }, [active]);
 
-  // Only run once permission is known and not denied — an animation that can
-  // never become a live feed is worse than the guard panel.
+  // A boolean, so prompt -> granted (which happens the moment the user allows
+  // the camera) does not stop and restart a scanner that is already starting.
+  const shouldRun = active && permission !== 'denied' && permission !== 'checking';
+
+  // `attempt` is bumped by the Try again button so a failed start is retried
+  // even though nothing else about the hook's state has changed.
   useEffect(() => {
-    if (active && permission !== 'denied' && permission !== 'checking') {
-      start();
-    } else {
-      stop();
-    }
+    if (shouldRun) start();
 
     return () => {
       stop();
     };
-  }, [active, permission, start, stop]);
+  }, [shouldRun, attempt, start, stop]);
 
   const recheckPermission = useCallback(async () => {
     setError('');
+    setAttempt((count) => count + 1);
     setPermission(await getCameraPermissionState());
   }, []);
 
