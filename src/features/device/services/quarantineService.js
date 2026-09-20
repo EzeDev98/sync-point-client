@@ -18,7 +18,7 @@ import { clearEncryptionKey } from '@core/crypto/keyManager';
  */
 
 /** Key material that makes the quarantined records readable again. */
-const KEY_MATERIAL_KEYS = ['wrappedDEK', 'pin_salt', 'pin_verifier', 'pin_verified_at'];
+const KEY_MATERIAL_KEYS = ['wrappedDEK', 'kek_salt', 'pin_salt', 'pin_verifier', 'pin_verified_at'];
 
 const PRESERVED_KEYS = [
   'walletId',
