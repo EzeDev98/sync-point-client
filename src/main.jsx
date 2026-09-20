@@ -11,6 +11,7 @@ import './styles/reset.css';
 import './styles/base.css';
 
 import { configureHttpClient } from './core/http/httpClient';
+import { seedAppliedBuildId } from './features/device/services/versionService';
 import { getValidToken, handleSessionRevoked } from './features/auth/services/tokenStore';
 import DeviceGate from './features/device/pages/DeviceGate/DeviceGate.jsx';
 import App from './app/App.jsx';
@@ -19,6 +20,10 @@ import App from './app/App.jsx';
 // core/http so that core stays independent of any feature, and so the
 // api ↔ token circular import the old code had cannot come back.
 configureHttpClient({ tokenProvider: getValidToken, onSessionRevoked: handleSessionRevoked });
+
+// First run on this device: record the running build as applied so a brand-new install is not
+// told to update to the build it just downloaded.
+seedAppliedBuildId();
 
 // Capture beforeinstallprompt as early as possible — before any component
 // mounts. InstallPage reads from window.__installPrompt when it's ready.

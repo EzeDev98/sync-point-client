@@ -7,6 +7,35 @@ const CURRENT_BUILD_ID = typeof __APP_BUILD_ID__ !== 'undefined' ? __APP_BUILD_I
 const VERSION_URL = '/version.json';
 
 /**
+ * The build this device last fully applied (a hard reset that cleaned the service worker and
+ * caches). Kept apart from the running bundle on purpose: navigations are network-first, so a
+ * fresh page load always runs the newest bundle even though the device was never reset.
+ */
+const APPLIED_BUILD_KEY = 'applied_build_id';
+
+function readAppliedBuildId() {
+  try {
+    return localStorage.getItem(APPLIED_BUILD_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function markBuildApplied(buildId) {
+  if (!buildId) return;
+  try {
+    localStorage.setItem(APPLIED_BUILD_KEY, buildId);
+  } catch {
+    // Storage unavailable: the next check simply treats this device as up to date.
+  }
+}
+
+/** First run on a device: there is nothing to update from, so the running build counts as applied. */
+export function seedAppliedBuildId() {
+  if (readAppliedBuildId() === null) markBuildApplied(CURRENT_BUILD_ID);
+}
+
+/**
  * Cache-busted on purpose. The service worker caches aggressively, and a
  * cached version.json would report the running build as current forever —
  * the update would never be discoverable.
@@ -51,7 +80,11 @@ export async function fetchRemoteBuildId() {
 export async function checkForUpdate() {
   const remoteBuildId = await fetchRemoteBuildId();
 
-  if (!remoteBuildId || remoteBuildId === CURRENT_BUILD_ID) {
+  // Up to date means BOTH: this bundle is the published one, and this device has applied that
+  // build. Without the second half a fresh load of /login never reports an update.
+  const appliedBuildId = readAppliedBuildId() ?? CURRENT_BUILD_ID;
+
+  if (!remoteBuildId || (remoteBuildId === CURRENT_BUILD_ID && remoteBuildId === appliedBuildId)) {
     return { updateAvailable: false };
   }
 

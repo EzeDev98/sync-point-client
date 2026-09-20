@@ -50,7 +50,9 @@ function Login() {
     async function checkUpdateThenSession() {
       if (getIsOnline()) {
         const { updateAvailable, remoteBuildId } = await checkForUpdate();
-        if (updateAvailable) {
+        // Only a signed-out device is force-updated. A resumable session can still hold unsynced
+        // transactions, and the hard reset would destroy them; the in-app reminder covers that case.
+        if (updateAvailable && !hasResumableSession()) {
           setUpdateInfo({ show: true, remoteBuildId });
           setIsCheckingSession(false);
           return;
@@ -97,7 +99,7 @@ function Login() {
       if (!getIsOnline()) return;
       try {
         const { updateAvailable, remoteBuildId } = await checkForUpdate();
-        if (!cancelled && updateAvailable) {
+        if (!cancelled && updateAvailable && !hasResumableSession()) {
           setUpdateInfo({ show: true, remoteBuildId });
         }
       } catch (err) {
@@ -122,7 +124,7 @@ function Login() {
   async function handleUpdateNow() {
     setIsUpdating(true);
     try {
-      await performHardReset();
+      await performHardReset(updateInfo.remoteBuildId);
     } catch (err) {
       console.error('[Login] Hard reset failed:', err);
       setIsUpdating(false);

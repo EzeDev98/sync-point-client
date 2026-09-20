@@ -1,4 +1,5 @@
 import { getIsOnline } from '@core/network/networkService';
+import { fetchRemoteBuildId, markBuildApplied } from '@features/device/services/versionService';
 
 /**
  * Destructive wipe of everything this origin owns, followed by a reload.
@@ -62,10 +63,13 @@ function clearWebStorage() {
   }
 }
 
-export async function performHardReset() {
+export async function performHardReset(targetBuildId) {
   if (!getIsOnline()) {
     throw new Error('OFFLINE');
   }
+
+  // Resolved before anything is wiped, so a failed lookup cannot leave a half-reset device.
+  const buildToRecord = targetBuildId ?? (await fetchRemoteBuildId());
 
   console.log('[hardReset] Starting full reset...');
 
@@ -75,6 +79,8 @@ export async function performHardReset() {
   await deleteCaches();
   await deleteDatabases();
   clearWebStorage();
+  // The wipe above removed the marker, so write it back or the next check prompts again.
+  markBuildApplied(buildToRecord);
 
   console.log('[hardReset] Complete — reloading.');
 
