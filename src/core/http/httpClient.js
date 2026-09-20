@@ -24,8 +24,12 @@ const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:2000/api/v1';
 /** Set once at startup by the app entry point. */
 let getAuthToken = null;
 
-export function configureHttpClient({ tokenProvider }) {
+/** Called when the server reports the session was ended while the token was still valid. */
+let sessionRevokedHandler = null;
+
+export function configureHttpClient({ tokenProvider, onSessionRevoked }) {
   getAuthToken = tokenProvider;
+  sessionRevokedHandler = onSessionRevoked ?? null;
 }
 
 async function parseBody(response) {
@@ -85,6 +89,10 @@ export async function request(path, { method = 'GET', body, auth = false, fallba
   const data = await parseBody(response);
 
   if (!response.ok) {
+    if (response.status === 401 && data?.code === 'SESSION_REVOKED' && sessionRevokedHandler) {
+      await sessionRevokedHandler();
+    }
+
     throw new ApiError(
       data?.detail || data?.message || fallback || 'Something went wrong. Please try again.',
       {

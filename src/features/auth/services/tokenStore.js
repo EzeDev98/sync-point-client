@@ -1,7 +1,11 @@
 import { refreshToken } from '@features/auth/api/authApi';
 import { getIsOnline } from '@core/network/networkService';
 import { quarantineAndWipeSession } from '@features/device/services/quarantineService';
-import { persistValue, readPersisted } from '@features/auth/services/sessionManager';
+import {
+  clearTokenSession,
+  persistValue,
+  readPersisted,
+} from '@features/auth/services/sessionManager';
 
 /**
  * Access-token lifecycle: expiry checks, refresh, and session termination.
@@ -42,6 +46,28 @@ async function endSession() {
   await quarantineAndWipeSession();
   window.dispatchEvent(new CustomEvent('session-expired'));
   throw new Error('SESSION_EXPIRED');
+}
+
+/** In-flight teardown, shared so several 401s at once tear the session down only once. */
+let revokedPromise = null;
+
+/**
+ * The server says this session was ended (admin sign-out, logout elsewhere) while the
+ * access token was still valid. Same teardown as an expired session: quarantine anything
+ * unsynced, wipe the live session, send the user to /login.
+ */
+export function handleSessionRevoked() {
+  if (!revokedPromise) {
+    revokedPromise = quarantineAndWipeSession()
+      .catch((err) => {
+        console.error('[tokenStore] Quarantine after session revocation failed:', err);
+        clearTokenSession();
+      })
+      .finally(() => {
+        window.dispatchEvent(new CustomEvent('session-expired'));
+      });
+  }
+  return revokedPromise;
 }
 
 function doRefresh() {

@@ -4,6 +4,7 @@ import { Button, Modal, TextLink, PinField } from '@shared/components/ui';
 import { FormScreen } from '@shared/components/layout';
 import { useNetwork } from '@shared/hooks/useNetwork';
 import { verifyWalletPin } from '@features/pin/api/pinApi';
+import { checkPinSet } from '@features/auth/api/authApi';
 import { readPersisted } from '@features/auth/services/sessionManager';
 import { saveOfflinePinVerifier } from '@core/crypto/pinVerifier';
 import { hasOfflinePinVerifier, verifyOfflinePin } from '@core/crypto/pinVerifier';
@@ -77,6 +78,14 @@ function PinVerification() {
     }
   }, []);
 
+  // Touch the server once on arrival. If an admin ended this session while the app was closed,
+  // the 401 tears it down here, before the user types a PIN. Errors are ignored on purpose:
+  // the global handler does the work, and offline/transient failures must not block unlock.
+  useEffect(() => {
+    if (!walletId || isOffline) return;
+    checkPinSet(walletId).catch(() => {});
+  }, [walletId, isOffline]);
+
   function handleChange(e) {
     setPin(e.target.value);
     if (errors.pin) setErrors({});
@@ -120,6 +129,8 @@ function PinVerification() {
     try {
       return await verifyWalletPin(walletId, enteredPin);
     } catch (err) {
+      // A revoked session must never fall through to the offline PIN check.
+      if (err instanceof ApiError && err.body?.code === 'SESSION_REVOKED') throw err;
       const serverUnavailable =
         err instanceof ApiError && (err.status === undefined || err.status >= 500 || err.status === 401);
       if (serverUnavailable && hasOfflinePinVerifier()) return verifyOfflinePin(enteredPin);
