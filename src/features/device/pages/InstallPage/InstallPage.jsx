@@ -1,3 +1,4 @@
+// Guides the user through installing the PWA.
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, InfoBanner } from '@shared/components/ui';
@@ -6,20 +7,6 @@ import { InstallPhase, useInstallPrompt } from '@features/device/hooks/useInstal
 import { ROUTES } from '@app/router/routes';
 import styles from './InstallPage.module.css';
 
-/**
- * Drives PWA installation.
- *
- * Once installation is underway or confirmed, this page deliberately does not
- * navigate anywhere in the browser tab. The point of the flow is to move the
- * user off the browser and onto the installed app, so it ends on a hand-off
- * screen whose button closes the tab. Opening the installed app lands on
- * Onboarding, which redirects to the welcome screen on its own.
- */
-
-/**
- * How long to wait after window.close() before assuming the browser refused.
- * Browsers silently ignore close() on tabs they did not open themselves.
- */
 const CLOSE_FALLBACK_DELAY_MS = 400;
 
 const BENEFITS = [
@@ -181,11 +168,6 @@ function InstallPage() {
               After installing, open SyncPoint from your home screen to continue.
             </p>
 
-            {/*
-              A manual install cannot be detected — iOS Safari fires neither
-              beforeinstallprompt nor appinstalled — so the user confirms it
-              and joins the same hand-off screen as the automatic flow.
-            */}
             <Button onClick={() => setPhase(InstallPhase.CLOSE)}>
               I&apos;ve installed — continue
             </Button>

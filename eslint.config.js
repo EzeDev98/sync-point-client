@@ -1,3 +1,4 @@
+// ESLint configuration for the SyncPoint client.
 import js from '@eslint/js'
 import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
@@ -14,9 +15,9 @@ export default defineConfig([
       reactRefresh.configs.vite,
     ],
     languageOptions: {
-      globals: globals.browser,
-       __APP_BUILD_ID__: "readonly",
+      globals: { ...globals.browser, __APP_BUILD_ID__: 'readonly' },
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
+    rules: { 'no-empty': ['error', { allowEmptyCatch: true }] },
   },
 ])

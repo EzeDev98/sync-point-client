@@ -1,3 +1,4 @@
+// Public exports of the UI components.
 export { default as AmountField } from './AmountField/AmountField.jsx';
 export { default as Button } from './Button/Button.jsx';
 export { default as ButtonGroup } from './ButtonGroup/ButtonGroup.jsx';

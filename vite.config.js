@@ -1,3 +1,4 @@
+// Vite configuration: path aliases, build id and service worker precache injection.
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { writeFileSync, readFileSync, readdirSync, mkdirSync } from "fs";
@@ -15,13 +16,11 @@ function versionManifestPlugin() {
       const outDir = outputOptions.dir || "dist";
       mkdirSync(outDir, { recursive: true });
 
-      // 1. Write version.json so the running app can fetch it and compare
       writeFileSync(
         resolve(outDir, "version.json"),
         JSON.stringify({ buildId: BUILD_ID, builtAt: new Date().toISOString() })
       );
 
-      // 2. Discover the real, content-hashed JS/CSS filenames Vite just emitted
       const assetsDir = resolve(outDir, "assets");
       let assetUrls = [];
       try {
@@ -38,7 +37,6 @@ function versionManifestPlugin() {
         );
       }
 
-      // 3. Stamp BUILD_ID and inject the precache asset list into sw.js
       const swPath = resolve(outDir, "sw.js");
       let swSource = readFileSync(swPath, "utf-8");
       swSource = swSource.replace("__SW_BUILD_ID__", BUILD_ID);
@@ -71,9 +69,6 @@ export default defineConfig({
   define: {
     __APP_BUILD_ID__: JSON.stringify(BUILD_ID),
   },
-  // Path aliases. Without these the feature-first tree produces imports like
-  // "../../../../shared/components/ui", which break on every file move.
-  // Keep this list in sync with jsconfig.json so the editor resolves them too.
   resolve: {
     alias: {
       "@": srcPath,

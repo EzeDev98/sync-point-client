@@ -1,16 +1,4 @@
-/**
- * Device and browser capability checks.
- *
- * SyncPoint needs a specific set of browser APIs to work at all — without
- * IndexedDB there is nowhere to store transactions, and without Web Crypto
- * they cannot be encrypted. A device missing either cannot run the app in a
- * degraded mode, so it is blocked outright at DeviceGate rather than failing
- * confusingly later.
- *
- * Minimum supported: devices from 2016 onward.
- */
-
-/** Each entry returns true when the capability is present. */
+// Checks the browser APIs SyncPoint needs to run.
 const REQUIRED_FEATURES = {
   indexedDB: () => Boolean(window.indexedDB),
   serviceWorker: () => 'serviceWorker' in navigator,
@@ -18,8 +6,6 @@ const REQUIRED_FEATURES = {
   promise: () => typeof Promise !== 'undefined',
   cryptoSubtle: () => Boolean(window.crypto && window.crypto.subtle),
   sessionStorage: () => {
-    // Presence is not enough — Safari private browsing exposes the API but
-    // throws on write, so the only reliable check is to attempt one.
     try {
       sessionStorage.setItem('__probe', '1');
       sessionStorage.removeItem('__probe');
@@ -61,7 +47,6 @@ function getDeviceInfo() {
     userAgent.includes('Mac') ||
     userAgent.includes('Linux')
   ) {
-    // Desktop is only used for development; the version check is bypassed.
     return { os: 'desktop', version: 999, name: 'Desktop' };
   }
 
@@ -106,13 +91,6 @@ export function checkDeviceCompatibility() {
   };
 }
 
-/**
- * True when running as an installed PWA rather than in a browser tab.
- *
- * Three checks because no single one covers every platform: the standard
- * display-mode query, Safari's non-standard navigator.standalone, and
- * fullscreen for launchers that use it instead of standalone.
- */
 export function isPWAInstalled() {
   if (window.matchMedia('(display-mode: standalone)').matches) return true;
   if (window.navigator.standalone === true) return true;

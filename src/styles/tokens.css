@@ -1,28 +1,4 @@
-/* ============================================================================
-   DESIGN TOKENS
-   ----------------------------------------------------------------------------
-   Single source of truth for every colour, size, radius, shadow and duration
-   in the app. Nothing here is invented — every value was extracted from the
-   existing stylesheets and inline styles, so applying these tokens does not
-   change how the app looks.
-
-   Two layers:
-     1. PRIMITIVES  (--teal-600, --gray-500)  — the raw palette. Never
-        reference these directly from a component stylesheet.
-     2. SEMANTIC    (--color-accent, --color-text-primary) — what the app
-        actually means. Components reference ONLY these.
-
-   The semantic names from the old :root block in auth.css / login.css are
-   preserved verbatim, so any stylesheet not yet migrated keeps working
-   while phase 2 is in progress.
-   ========================================================================= */
-
 :root {
-  /* ==========================================================================
-     1. PRIMITIVES — raw palette
-     ====================================================================== */
-
-  /* Teal — brand */
   --teal-50: #F0FDF9;
   --teal-100: #E1F5EE;
   --teal-200: #99F6E4;
@@ -32,7 +8,6 @@
   --teal-800: #085041;
   --teal-900: #134E4A;
 
-  /* Gray — neutrals */
   --gray-0: #FFFFFF;
   --gray-50: #F9FAFB;
   --gray-100: #F3F4F6;
@@ -43,13 +18,11 @@
   --gray-700: #374151;
   --gray-900: #111827;
 
-  /* Red — destructive / error */
   --red-50: #FCEBEB;
   --red-100: #FEE2E2;
   --red-300: #FCA5A5;
   --red-600: #DC2626;
 
-  /* Amber — warning / pending */
   --amber-50: #FEF3C7;
   --amber-100: #FAEEDA;
   --amber-300: #F6C675;
@@ -58,8 +31,6 @@
   --amber-800: #92400E;
   --amber-900: #633806;
 
-  /* Sync status — distinct from the semantic status ramps because these
-     signal transport state (synced / in-flight / failed), not validity */
   --sync-ok-bg: #E8F7EF;
   --sync-ok-dot: #16A34A;
   --sync-pending-bg: #FFF4D8;
@@ -67,34 +38,24 @@
   --sync-pending-dot: #D97706;
   --sync-error-fg: #B91C1C;
 
-  /* Blue — informational */
   --blue-50: #E6F1FB;
   --blue-900: #0C447C;
 
-  /* Indigo — secondary accent */
   --indigo-50: #EEEDFE;
   --indigo-900: #3C3489;
 
-  /* Off-white app surface */
   --neutral-surface: #F8FAFA;
 
-  /* ==========================================================================
-     2. SEMANTIC — colour
-     ====================================================================== */
-
-  /* Surfaces */
   --color-bg: var(--gray-0);
   --color-surface: var(--neutral-surface);
   --color-surface-raised: var(--gray-0);
   --color-surface-sunken: var(--gray-50);
   --color-overlay: rgba(17, 24, 39, 0.35);
 
-  /* Borders */
   --color-border: var(--gray-200);
   --color-border-strong: var(--gray-300);
   --color-border-subtle: var(--gray-100);
 
-  /* Brand / accent */
   --color-accent: var(--teal-600);
   --color-accent-hover: var(--teal-700);
   --color-accent-active: var(--teal-800);
@@ -102,7 +63,6 @@
   --color-accent-faint: var(--teal-50);
   --color-accent-on: var(--gray-0);
 
-  /* Text */
   --color-text-primary: var(--gray-900);
   --color-text-secondary: var(--gray-500);
   --color-text-muted: var(--gray-400);
@@ -110,13 +70,11 @@
   --color-text-inverse: var(--gray-0);
   --color-text-accent: var(--teal-600);
 
-  /* Status — error */
   --color-error: var(--red-600);
   --color-error-bg: var(--red-100);
   --color-error-bg-subtle: var(--red-50);
   --color-error-border: var(--red-300);
 
-  /* Status — warning / pending */
   --color-warning: var(--amber-500);
   --color-warning-bg: var(--amber-100);
   --color-warning-bg-subtle: var(--amber-50);
@@ -124,18 +82,15 @@
   --color-warning-text: var(--amber-900);
   --color-warning-text-strong: var(--amber-800);
 
-  /* Status — success / synced */
   --color-success: var(--teal-600);
   --color-success-bg: var(--teal-100);
   --color-success-bg-subtle: var(--teal-50);
   --color-success-border: var(--teal-300);
   --color-success-text: var(--teal-800);
 
-  /* Status — info */
   --color-info: var(--blue-900);
   --color-info-bg: var(--blue-50);
 
-  /* Transaction category tints, used by the transaction list icons */
   --color-tx-send-bg: var(--amber-100);
   --color-tx-send-fg: var(--amber-900);
   --color-tx-receive-bg: var(--teal-100);
@@ -145,17 +100,12 @@
   --color-tx-fund-bg: var(--indigo-50);
   --color-tx-fund-fg: var(--indigo-900);
 
-  /* Accent hover wash used by the settings trigger */
   --color-accent-wash: #F0FBF9;
 
-  /* Disabled */
   --color-disabled-bg: var(--gray-100);
   --color-disabled-text: var(--gray-400);
   --color-disabled-border: var(--gray-200);
 
-  /* ==========================================================================
-     3. SPACING — 2px base, named by px value for a 1:1 migration mapping
-     ====================================================================== */
   --space-0: 0;
   --space-2: 2px;
   --space-4: 4px;
@@ -174,17 +124,11 @@
   --space-48: 48px;
   --space-64: 64px;
 
-  /* ==========================================================================
-     4. TYPOGRAPHY
-     ====================================================================== */
   --font-family-base: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     Helvetica, Arial, sans-serif;
   --font-family-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
     "Liberation Mono", monospace;
 
-  /* The old sheets used half-pixel sizes (10.5, 11.5, 12.5, 13.5). Those
-     collapse to the nearest step here; the difference is not perceptible and
-     it removes eight redundant sizes from the scale. */
   --font-size-micro: 9px;
   --font-size-3xs: 10px;
   --font-size-2xs: 11px;
@@ -216,9 +160,6 @@
   --letter-spacing-wide: 0.02em;
   --letter-spacing-wider: 0.06em;
 
-  /* ==========================================================================
-     5. RADII
-     ====================================================================== */
   --radius-xs: 4px;
   --radius-sm: 6px;
   --radius-md: 8px;
@@ -230,13 +171,9 @@
   --radius-pill: 999px;
   --radius-circle: 50%;
 
-  /* Legacy aliases — keep until every stylesheet is migrated */
   --radius-card: var(--radius-xl);
   --radius-input: var(--radius-md);
 
-  /* ==========================================================================
-     6. ELEVATION
-     ====================================================================== */
   --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.03);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
   --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.07);
@@ -244,18 +181,13 @@
   --shadow-drawer: 4px 0 24px rgba(0, 0, 0, 0.12);
   --shadow-glow-accent: 0 0 8px rgba(15, 118, 110, 0.8);
 
-  /* Focus rings */
   --ring-accent: 0 0 0 3px rgba(15, 118, 110, 0.08);
   --ring-error: 0 0 0 3px rgba(220, 38, 38, 0.08);
   --ring-focus-visible: 0 0 0 3px rgba(15, 118, 110, 0.35);
 
-  /* ==========================================================================
-     7. MOTION
-     ====================================================================== */
   --duration-fast: 160ms;
   --duration-base: 220ms;
   --duration-slow: 300ms;
-  /* Slide-in panels. Matches the original drawer timing exactly. */
   --duration-drawer: 250ms;
   --easing-standard: ease;
   --easing-out: cubic-bezier(0.16, 1, 0.3, 1);
@@ -264,9 +196,6 @@
   --transition-border: border-color var(--duration-slow) var(--easing-standard);
   --transition-shadow: box-shadow var(--duration-slow) var(--easing-standard);
 
-  /* ==========================================================================
-     8. LAYERING
-     ====================================================================== */
   --z-base: 0;
   --z-raised: 1;
   --z-sticky: 5;
@@ -278,9 +207,6 @@
   --z-floating: 500;
   --z-splash: 999;
 
-  /* ==========================================================================
-     9. COMPONENT PRIMITIVES
-     ====================================================================== */
   --input-height: 44px;
   --button-height: 44px;
   --tap-target-min: 44px;

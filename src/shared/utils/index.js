@@ -1,3 +1,4 @@
+// Public exports of the shared utilities.
 export { formatEntryAmount, formatNaira } from './formatCurrency.js';
 export { formatShortDateTime } from './formatDateTime.js';
 export { maskPhoneNumber } from './maskPhoneNumber.js';

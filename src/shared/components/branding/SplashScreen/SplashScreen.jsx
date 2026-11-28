@@ -1,3 +1,4 @@
+// Splash screen shown while the app starts.
 import styles from './SplashScreen.module.css';
 import { APP_LOGO_DATA_URI } from '../AppLogo/logoAsset';
 

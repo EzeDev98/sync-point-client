@@ -1,3 +1,4 @@
+// Final step of the password reset flow: choose a new password.
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, FormError, Modal, TextField } from '@shared/components/ui';
@@ -26,7 +27,6 @@ function CreateNewPassword() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // Reaching this step without a verified reset token is not a valid state.
   useEffect(() => {
     if (!hasResetToken()) {
       navigate('/forgot-password', { replace: true });
@@ -72,7 +72,6 @@ function CreateNewPassword() {
       clearPasswordResetState();
       setShowSuccess(true);
     } catch (err) {
-      // An expired token means the whole flow has to start over.
       if (err.status === 400 && /expired|start again/i.test(err.message || '')) {
         clearPasswordResetState();
       }

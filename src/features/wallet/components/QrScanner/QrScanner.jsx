@@ -1,14 +1,7 @@
+// Camera viewfinder for scanning QR codes, with its permission states.
 import { Button, Card, EmptyState } from '@shared/components/ui';
 import styles from './QrScanner.module.css';
 
-/**
- * Camera viewfinder with its permission states.
- *
- * The blocked-permission panel and the "checking" placeholder were written
- * out separately in SendMoney and ReceivePayment; both live here now.
- * The scanner itself is driven by useQrScanner — this component only renders
- * the frame it draws into, identified by `elementId`.
- */
 function QrScanner({ elementId, permission, error, instruction, hint, onRetryPermission }) {
   if (permission === 'denied') {
     return (

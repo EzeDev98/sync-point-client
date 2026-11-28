@@ -1,6 +1,7 @@
+// Send flow: scan a payment request, confirm with the PIN and show the signed transfer QR.
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, CheckCircle2 } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import {
   Button,
   ButtonGroup,
@@ -38,7 +39,6 @@ import styles from './SendMoney.module.css';
 const SCANNER_ELEMENT_ID = 'qr-reader';
 const MAX_PIN_ATTEMPTS = 3;
 
-/** Ordered stages of the send flow. */
 const Step = {
   SCAN: 'scan',
   REVIEW: 'review',
@@ -57,7 +57,6 @@ const STEP_TITLES = {
   [Step.COMPLETE]: 'Payment sent',
 };
 
-/** Where the back control goes from each step. Null means leave the flow. */
 const PREVIOUS_STEP = {
   [Step.SCAN]: null,
   [Step.REVIEW]: Step.SCAN,
@@ -70,9 +69,6 @@ const PREVIOUS_STEP = {
 function SendMoney() {
   const navigate = useNavigate();
 
-  // Restores an in-progress send if the app was backgrounded (lock, call,
-  // minimise) and the user re-verified their PIN. The entered PIN is never
-  // part of the snapshot — it is re-entered on the PIN step.
   const { initial, persist, clear } = usePersistedFlow('send:flow');
 
   const [step, setStep] = useState(() => initial?.step ?? Step.SCAN);
@@ -93,8 +89,6 @@ function SendMoney() {
 
   const isSessionValid = Boolean(sender.walletId && sender.phone);
 
-  // The scan callback is invoked from outside React's render cycle, so it
-  // reads the balance from a ref rather than a captured state value.
   const balanceRef = useRef(0);
   useEffect(() => {
     balanceRef.current = offlineBalance;
@@ -115,8 +109,6 @@ function SendMoney() {
     }
   }, [isSessionValid, navigate]);
 
-  // Keep the resumable snapshot current as the flow advances. The PIN, errors,
-  // and transient submit flags are intentionally excluded.
   useEffect(() => {
     persist({ step, request, transferPayload });
   }, [step, request, transferPayload, persist]);
@@ -165,8 +157,6 @@ function SendMoney() {
       return;
     }
 
-    // Nothing is written to storage until the final confirmation, so every
-    // step before it is safe to walk back from.
     if (previous === Step.SCAN) setRequest(null);
     if (step === Step.PIN || step === Step.SHOW_QR) setPin('');
 
@@ -186,12 +176,6 @@ function SendMoney() {
     setStep(Step.SCAN);
   }
 
-  /**
-   * Verifying the PIN only *prepares* the transaction — it signs the transfer
-   * and builds the QR the receiver scans. Nothing is written to storage and
-   * nothing is debited here. The debit happens only when the sender taps Done
-   * on the final screen, after both sides have confirmed the handoff.
-   */
   async function handleVerifyPin(e) {
     e.preventDefault();
 
@@ -231,12 +215,6 @@ function SendMoney() {
 
       sessionStorage.removeItem('pinAttempts');
 
-      // Fresh sufficiency check against the live ledger — this is the point of
-      // no return. Once the transfer is signed just below, the receiver can
-      // settle it whether or not this device ever finalizes the debit, and
-      // the server no longer re-checks the sender's funds. The review-step
-      // check used a snapshot that a background sync could have moved since,
-      // so re-read before committing to the signature.
       const currentBalance = await calculateOfflineBalance();
       setOfflineBalance(currentBalance);
       if (currentBalance < Number(request.amount)) {
@@ -251,12 +229,6 @@ function SendMoney() {
       const transactionRef = generateTransactionRef();
       const createdAt = new Date().toISOString();
 
-      // Sign the transfer with this device's key. signTransferWithDeviceKey
-      // ensures the device is enrolled+registered first and THROWS if it
-      // cannot be — a transfer we cannot sign must never be queued, because
-      // the server could never verify it. The signed fields are exactly what
-      // the server reconstructs and verifies, so they must match the values
-      // stored on the debit and sent at sync time.
       const signature = await signTransferWithDeviceKey({
         transactionRef,
         requestRef: request.requestRef,
@@ -278,7 +250,6 @@ function SendMoney() {
     }
   }
 
-  /** The only place the debit is written to storage. */
   async function handleFinalizeDebit() {
     setIsFinalizing(true);
 
@@ -310,7 +281,6 @@ function SendMoney() {
         new CustomEvent('balance-updated', { detail: { balance: newBalance } })
       );
 
-      // Flow is done — drop the resumable snapshot so a later visit starts clean.
       clear();
       navigate('/dashboard');
     } catch (err) {

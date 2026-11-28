@@ -1,3 +1,4 @@
+// Shown when an action needs a connection, and returns once the network is back.
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AppLogo } from '@shared/components/branding';
@@ -5,10 +6,6 @@ import { useNetwork } from '@shared/hooks/useNetwork';
 import { ROUTES } from '@app/router/routes';
 import styles from './Offline.module.css';
 
-/**
- * Shown when an action needs connectivity that is not available.
- * Returns the user to wherever they were the moment the network comes back.
- */
 function Offline() {
   const navigate = useNavigate();
   const location = useLocation();

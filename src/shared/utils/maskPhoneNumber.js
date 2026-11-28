@@ -1,12 +1,4 @@
-/**
- * Masks the middle digits of a phone number for display, e.g.
- * 08012345678 -> 080******78
- *
- * This exact function was defined three separate times — verbatim in
- * ForgotPin.jsx and VerifyPinResetOtp.jsx, and again inside the password
- * reset state module. Numbers shorter than six digits are returned
- * unchanged, since there is nothing meaningful left to mask.
- */
+// Masks the middle digits of a phone number for display.
 export function maskPhoneNumber(phoneNumber) {
   if (!phoneNumber) return '';
 

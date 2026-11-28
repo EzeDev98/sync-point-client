@@ -1,10 +1,4 @@
-/**
- * Every route path in the app, in one place.
- *
- * Paths were previously string literals spread across App.jsx and roughly
- * forty navigate() calls. A typo in any of them failed silently by falling
- * through to the catch-all redirect.
- */
+// Every route path in the app.
 export const ROUTES = {
   ONBOARDING: '/',
   INSTALL: '/install',
@@ -33,7 +27,6 @@ export const ROUTES = {
   COMING_SOON: '/coming-soon',
 };
 
-/** Routes that require an unlocked wallet, used by the lock gate. */
 export const PROTECTED_PATHS = [
   ROUTES.DASHBOARD,
   ROUTES.TRANSACTIONS,

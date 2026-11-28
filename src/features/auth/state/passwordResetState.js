@@ -1,13 +1,4 @@
-/**
- * Carries state between the steps of the password-reset flow.
- *
- * Held in a module variable rather than storage on purpose: the reset token
- * is a short-lived single-use credential and should not outlive the tab.
- * Losing it on a refresh is intentional — the route guards send the user
- * back to the start rather than stranding them mid-flow with no way to
- * finish.
- */
-
+// In-memory state shared by the password reset steps.
 const EMPTY = { phoneNumber: null, otpRequested: false, resetToken: null };
 
 let state = EMPTY;

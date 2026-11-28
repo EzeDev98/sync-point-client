@@ -1,24 +1,9 @@
-
+// Centred single-card page layout for form screens.
 import { Card } from '@shared/components/ui';
 import { ScreenContainer } from '@shared/components/layout';
 import BackButton from '../BackButton/BackButton.jsx';
 import styles from './FormScreen.module.css';
 
-/**
- * Centred single-card page scaffold: title, subtitle, form body, footer links.
- *
- * Replaces the block copy-pasted into all twelve auth and PIN pages —
- * .auth-page > .auth-card > .auth-header > .auth-title + .auth-subtitle,
- * then .auth-form and .auth-links.
- *
- * Lives in shared/ rather than in either feature because both the auth and
- * pin features use it, and a feature must never import another feature's
- * internals.
- *
- * `scrollable` switches to the taller top-aligned variant Register needs
- * (previously the separate .auth-page--register rule), so the two cannot
- * drift apart again.
- */
 function FormScreen({
   title,
   subtitle,

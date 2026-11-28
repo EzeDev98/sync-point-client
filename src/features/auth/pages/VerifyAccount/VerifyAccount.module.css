@@ -1,6 +1,3 @@
-/*
-  "or" divider between the OTP-submit path and the email-continue path.
-*/
 .divider {
   display: flex;
   align-items: center;

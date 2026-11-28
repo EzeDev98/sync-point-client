@@ -1,12 +1,5 @@
+// Password and phone number validation for the auth screens.
 import { validateRequired } from '@shared/utils/validation';
-
-/**
- * Password and phone rules specific to the auth screens.
- *
- * The OTP and error-collection helpers moved to shared/utils/validation —
- * the PIN feature needed the identical implementations. They are re-exported
- * here so auth call sites keep one import.
- */
 
 export { OTP_LENGTH, collectErrors, validateOtp, validateRequired } from '@shared/utils/validation';
 
@@ -42,5 +35,4 @@ export function validatePasswordConfirmation(confirmation, password) {
   return '';
 }
 
-/** Kept so the import surface of this module stays stable for call sites. */
 export { validateRequired as validateRequiredField };

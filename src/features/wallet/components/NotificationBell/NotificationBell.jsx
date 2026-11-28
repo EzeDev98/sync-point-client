@@ -1,20 +1,9 @@
+// Notification bell with its dropdown list.
 import { useEffect, useRef, useState } from 'react';
 import { Bell } from 'lucide-react';
 import { formatShortDateTime } from '@shared/utils';
 import styles from './NotificationBell.module.css';
 
-/**
- * Icon and colour per notification type.
- *
- * Derived here rather than stored on the record. Nothing ever wrote an
- * `icon` field — the previous markup rendered `notification.icon`, which was
- * always undefined, leaving an empty circle. Storing it would also freeze
- * today's emoji into every record already in localStorage.
- *
- * The stored `type` values are 'fund' and 'transfer'; the stylesheet only
- * had success/warning/error/info, so the tone silently fell through to
- * neutral as well. Both are resolved by one lookup.
- */
 const NOTIFICATION_STYLE = {
   fund: { icon: '💳', tone: 'success' },
   transfer: { icon: '🏦', tone: 'info' },
@@ -26,13 +15,6 @@ const NOTIFICATION_STYLE = {
 
 const FALLBACK_STYLE = { icon: '🔔', tone: 'info' };
 
-/**
- * Bell button with its dropdown panel.
- *
- * Owns its own open state and outside-click handling, which were previously
- * a useState, a useRef and a document-level mousedown effect sitting in
- * Dashboard alongside everything else.
- */
 function NotificationBell({ notifications = [], unreadCount = 0, onMarkAsRead, onMarkAllAsRead }) {
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef(null);

@@ -1,23 +1,12 @@
+// Loads the offline balance and transactions for the dashboard.
 import { useCallback, useEffect, useState } from 'react';
 import { getAllTransactions } from '@core/db/transactionRepository';
 import { calculateOfflineBalance } from '@features/wallet/services/walletLedger';
 import { getSyncBadgeCount, startAutoSync } from '@features/sync/services/syncService';
 import { isEncryptionReady } from '@core/crypto/keyManager';
 
-/** Raised when the wallet is reached without an unlocked encryption key. */
 export const SESSION_EXPIRED = 'SESSION_EXPIRED';
 
-/**
- * Loads and keeps fresh the three pieces of wallet state that always move
- * together: pending sync count, transaction list, and offline balance.
- *
- * The balance is always derived from IndexedDB rather than read from
- * session or local storage, so it stays correct across an app restart.
- *
- * Owns three effects that were previously inline in Dashboard: the initial
- * load, the auto-sync subscription, and the balance-updated listener other
- * pages dispatch.
- */
 export function useWalletData({ enabled = true } = {}) {
   const [transactions, setTransactions] = useState([]);
   const [offlineBalance, setOfflineBalance] = useState(0);
@@ -27,8 +16,6 @@ export function useWalletData({ enabled = true } = {}) {
   const [syncResult, setSyncResult] = useState(null);
 
   const refresh = useCallback(async () => {
-    // Encryption is established during PIN verification. Arriving here
-    // without it means the wallet is locked.
     if (!isEncryptionReady()) {
       throw new Error(SESSION_EXPIRED);
     }
@@ -81,7 +68,6 @@ export function useWalletData({ enabled = true } = {}) {
     });
   }, [enabled, refresh]);
 
-  // Other pages dispatch this after mutating the ledger.
   useEffect(() => {
     async function handleBalanceUpdate() {
       try {

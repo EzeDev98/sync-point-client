@@ -1,13 +1,7 @@
+// Select input built on FormField.
 import FormField from '../FormField/FormField.jsx';
 import styles from './SelectField.module.css';
 
-/**
- * Select counterpart to TextField, sharing FormField's anatomy.
- *
- * Options are passed as data rather than as children so every call site
- * renders them identically:
- *   options={[{ value: 'ng', label: 'Nigeria' }]}
- */
 function SelectField({
   label,
   value,

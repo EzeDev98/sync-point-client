@@ -1,4 +1,3 @@
-/* Horizontal step slider — one viewport-width track that shifts by 100% */
 .slider {
   position: relative;
   width: 100%;
@@ -37,7 +36,6 @@
 }
 
 @media (max-width: 480px) {
-  /* Name fields stack, but gender and date of birth stay side by side */
   .row {
     flex-direction: column;
   }

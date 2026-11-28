@@ -18,11 +18,6 @@
     box-shadow var(--duration-fast) var(--easing-standard);
 }
 
-/*
-  Focus shows as the soft ring only — no border-colour change.
-  A teal border reads as an outline against the resting grey one, which is
-  the effect this deliberately avoids.
-*/
 .select:focus {
   box-shadow: var(--ring-accent);
 }

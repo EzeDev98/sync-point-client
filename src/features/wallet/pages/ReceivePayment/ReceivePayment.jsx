@@ -1,6 +1,7 @@
+// Receive flow: show a payment request QR and scan the sender's signed transfer.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, CheckCircle2 } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import {
   AmountField,
   Button,
@@ -37,7 +38,6 @@ import styles from './ReceivePayment.module.css';
 const SCANNER_ELEMENT_ID = 'sender-qr-reader';
 const QR_LIFETIME_SECONDS = 300;
 
-/** Ordered stages of the receive flow. */
 const Step = {
   FORM: 'form',
   QR: 'qr',
@@ -54,7 +54,6 @@ const STEP_TITLES = {
   [Step.COMPLETE]: 'Payment received',
 };
 
-/** Where the back control goes from each step. Null means leave the flow. */
 const PREVIOUS_STEP = {
   [Step.FORM]: null,
   [Step.QR]: Step.FORM,
@@ -66,8 +65,6 @@ const PREVIOUS_STEP = {
 function ReceivePayment() {
   const navigate = useNavigate();
 
-  // Restores an in-progress receive if the app was backgrounded (lock, call,
-  // minimise) and the user re-verified their PIN.
   const { initial, persist, clear } = usePersistedFlow('receive:flow');
 
   const [step, setStep] = useState(() => initial?.step ?? Step.FORM);
@@ -89,11 +86,9 @@ function ReceivePayment() {
 
   const isSessionValid = Boolean(receiver.walletId && receiver.phone);
 
-  const { secondsLeft, formatted, restart, isComplete } = useCountdown(0);
+  const { formatted, restart, isComplete } = useCountdown(0);
   const isQrExpired = step === Step.QR && request !== null && isComplete;
 
-  // The scan callback runs outside React's render cycle, so it reads the
-  // current request from a ref rather than a captured state value.
   const requestRef = useRef(null);
   useEffect(() => {
     requestRef.current = request;
@@ -110,10 +105,6 @@ function ReceivePayment() {
     }
   }, [isSessionValid, navigate]);
 
-  // On resume from a lock the countdown state is gone, but request.expiresAt is
-  // an absolute time — restart the timer with whatever is actually left so the
-  // QR is not shown as falsely expired. Genuinely expired QRs (no time left)
-  // are left as-is and correctly render the "expired" state.
   useEffect(() => {
     if (initial?.step === Step.QR && initial?.request?.expiresAt) {
       const remainingMs = new Date(initial.request.expiresAt).getTime() - Date.now();
@@ -121,11 +112,9 @@ function ReceivePayment() {
         restart(Math.floor(remainingMs / 1000));
       }
     }
-    // Run once, on mount, against the restored snapshot only.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Keep the resumable snapshot current as the flow advances.
   useEffect(() => {
     persist({ step, formData, request, senderPayload });
   }, [step, formData, request, senderPayload, persist]);
@@ -158,7 +147,6 @@ function ReceivePayment() {
         return;
       }
 
-      // A transaction reference may only ever be credited once.
       if (await getTransactionByRef(payload.transactionRef)) {
         setErrorMessage('This transaction has already been processed.');
         return;
@@ -224,23 +212,17 @@ function ReceivePayment() {
       return;
     }
 
-    // Nothing is written to storage until the final confirmation, so every
-    // step before it is safe to walk back from.
     if (step === Step.REVIEW) setSenderPayload(null);
 
     setStep(previous);
   }
 
-  /** The only place the credit is written to storage. */
   async function handleFinalizeCredit() {
     if (!senderPayload || !request) return;
 
     setIsFinalizing(true);
 
     try {
-      // Re-checked here as well as at scan time: the review screen can be
-      // left open indefinitely, and a sync may have landed the same
-      // transaction in between.
       if (await getTransactionByRef(senderPayload.transactionRef)) {
         setErrorMessage('This transaction has already been processed.');
         return;
@@ -262,10 +244,6 @@ function ReceivePayment() {
         receiverName: receiver.name,
         entryType: 'CREDIT',
         createdAt: senderPayload.createdAt || new Date().toISOString(),
-        // The sender's signature, carried in the QR. Persisting it is what
-        // lets this device settle the credit on its own at sync time — the
-        // server verifies it against the sender's key regardless of who
-        // submits the transfer.
         signature: senderPayload.signature,
       });
 
@@ -276,7 +254,6 @@ function ReceivePayment() {
         new CustomEvent('balance-updated', { detail: { balance: newBalance } })
       );
 
-      // Flow is done — drop the resumable snapshot so a later visit starts clean.
       clear();
       navigate('/dashboard');
     } catch (err) {

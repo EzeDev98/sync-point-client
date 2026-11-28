@@ -1,9 +1,4 @@
-/**
- * Presentation helpers for transaction rows.
- * Extracted from the top of Dashboard.jsx, where they sat as loose functions
- * above the component.
- */
-
+// Display helpers for transaction rows.
 export const EntryType = {
   DEBIT: 'DEBIT',
   CREDIT: 'CREDIT',

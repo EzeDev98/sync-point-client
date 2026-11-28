@@ -1,8 +1,3 @@
-/*
-  Route cross-fade. The exit duration here must stay in step with
-  EXIT_DURATION_MS in AnimatedRoutes.jsx — the component holds the outgoing
-  route on screen for exactly that long before swapping.
-*/
 .wrapper {
   width: 100%;
   min-height: 100vh;

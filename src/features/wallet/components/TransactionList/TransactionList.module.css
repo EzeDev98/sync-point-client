@@ -1,7 +1,3 @@
-/*
-  Presentational only — no inner scroll. The dashboard passes just the latest
-  few rows; the full history page lets the page itself scroll.
-*/
 .list {
   display: flex;
   flex-direction: column;

@@ -1,9 +1,5 @@
+// Counterparty summary: avatar, name, phone and verified badge.
 import styles from './ReceiverCard.module.css';
-
-/**
- * Counterparty summary: avatar, name, phone, verified badge.
- * Replaces .receiver-card and friends.
- */
 
 function getInitials(name) {
   if (!name) return '??';

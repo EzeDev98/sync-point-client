@@ -25,8 +25,6 @@
   width: 100%;
 }
 
-/* --- Variants --------------------------------------------------------- */
-
 .primary {
   background: var(--color-accent);
   color: var(--color-accent-on);

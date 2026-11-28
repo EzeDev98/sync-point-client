@@ -1,19 +1,9 @@
-// ============================================
-// SERVICE WORKER — SyncPoint
-// ============================================
-
+// Service worker: precaches the app shell, serves it offline and triggers background sync.
 const CACHE_VERSION = '__SW_BUILD_ID__';
 const CACHE_NAME = `syncpoint-${CACHE_VERSION}`;
 const OFFLINE_URL = '/offline.html';
 const SHELL_URL = '/index.html';
 
-// The token below (assigned to HASHED_ASSETS) is replaced at build time
-// (see vite.config.js -> versionManifestPlugin) with the real, current
-// list of hashed JS/CSS filenames Vite just produced, e.g.
-// ["/assets/index-Dm9nNHOt.js","/assets/index-CzZhqdT-.css"].
-// This guarantees the exact bundle this build shipped gets precached
-// at install time, instead of depending on a page load happening to
-// pass through the SW before it's cached.
 const HASHED_ASSETS = "__PRECACHE_ASSETS__";
 
 const STATIC_ASSETS = [
@@ -33,36 +23,21 @@ const API_ENDPOINTS = [
   '/api/v1/wallet/balance',
 ];
 
-// The API server can run on a different origin/port than the client dev
-// server (e.g. http://localhost:2000 vs http://localhost:3030). In
-// production it's the same origin as the app itself.
 const API_ORIGIN = self.location.hostname === 'localhost'
   ? 'http://localhost:2000'
   : self.location.origin;
 
-// ============================================
-// INSTALL EVENT
-// ============================================
 self.addEventListener('install', (event) => {
   event.waitUntil(
     (async () => {
-      // skipWaiting() is intentionally NOT called here. Calling it on
-      // install would force every new SW version to activate immediately,
-      // even mid-transaction. skipWaiting() only runs on the explicit
-      // SKIP_WAITING message, sent after the user accepts an update prompt.
-
       const cache = await caches.open(CACHE_NAME);
 
-      // Cache each asset independently — cache.addAll() is atomic and would
-      // abort precaching entirely if even one URL 404s. This way a single
-      // missing asset doesn't take down the whole precache.
       await Promise.all(
         STATIC_ASSETS.map((url) =>
           cache.add(url).catch((err) => console.warn('[SW] Failed to precache', url, err))
         )
       );
 
-      // Open (but don't pre-populate) the API cache so it exists for later use
       await caches.open(API_CACHE_NAME);
 
       console.log('[SW] Install completed. Precached', STATIC_ASSETS.length, 'assets.');
@@ -70,9 +45,6 @@ self.addEventListener('install', (event) => {
   );
 });
 
-// ============================================
-// ACTIVATE EVENT
-// ============================================
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     (async () => {
@@ -93,20 +65,10 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// ============================================
-// FETCH EVENT
-// ============================================
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // version.json is intentionally cache-busted by versionService.js on
-  // every check (?t=${Date.now()}, cache: "no-store") specifically so it
-  // always reflects the latest deploy. Routing it through the static-asset
-  // cache-first handler would still work correctly (unique query string
-  // per request means no false cache hits) but would silently accumulate
-  // one new cache entry per version check, forever. Bypass the SW cache
-  // for this one path entirely — always go straight to network.
   if (url.pathname === '/version.json') {
     event.respondWith(
       fetch(request).catch(() =>
@@ -149,9 +111,6 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// ============================================
-// REQUEST HANDLERS
-// ============================================
 async function handleApiRequest(request) {
   const url = new URL(request.url);
 
@@ -301,9 +260,6 @@ async function updateApiCache(request) {
   }
 }
 
-// ============================================
-// HELPERS
-// ============================================
 function isStaticAsset(pathname) {
   const staticExtensions = [
     '.js', '.css', '.png', '.jpg', '.jpeg', '.svg', '.gif',
@@ -316,9 +272,6 @@ function shouldCacheApiEndpoint(pathname) {
   return API_ENDPOINTS.some((endpoint) => pathname.includes(endpoint));
 }
 
-// ============================================
-// BACKGROUND SYNC
-// ============================================
 self.addEventListener('sync', (event) => {
   if (event.tag === 'sync-transactions') {
     event.waitUntil(handleBackgroundSync());
@@ -344,9 +297,6 @@ async function handleBackgroundSync() {
   }
 }
 
-// ============================================
-// PUSH NOTIFICATIONS
-// ============================================
 self.addEventListener('push', (event) => {
   event.waitUntil(
     (async () => {
@@ -409,9 +359,6 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// ============================================
-// MESSAGE HANDLING
-// ============================================
 self.addEventListener('message', (event) => {
   if (!event.data) return;
 

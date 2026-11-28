@@ -1,10 +1,7 @@
+// Labelled checkbox.
 import { useId } from 'react';
 import styles from './Checkbox.module.css';
 
-/**
- * Labelled checkbox. Replaces .checkbox-label, which was previously written
- * out by hand with a nested native input.
- */
 function Checkbox({ label, checked, onChange, name, id, disabled = false, className = '' }) {
   const generatedId = useId();
   const fieldId = id ?? name ?? generatedId;

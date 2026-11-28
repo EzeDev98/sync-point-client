@@ -1,3 +1,4 @@
+// Final step of the PIN reset flow: choose a new PIN.
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, FormError, Modal, PinField } from '@shared/components/ui';
@@ -27,7 +28,6 @@ function CreateNewPin() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // Reaching this step without a verified reset token is not a valid state.
   useEffect(() => {
     if (!hasPinResetToken()) {
       navigate('/forgot-pin', { replace: true });
@@ -61,11 +61,6 @@ function CreateNewPin() {
     setIsSubmitting(true);
 
     try {
-      // The same three calls as the first-time SetPin flow: on the client a
-      // PIN reset is just "set the PIN again". The server-side resetToken is
-      // what proves this is authorised, and generating a fresh data key here
-      // is safe because ForgotPin already confirmed there is no unsynced
-      // offline data tied to the old one.
       await completePinReset(resetToken, formData.pin, formData.confirmNewPin);
       await saveOfflinePinVerifier(formData.pin);
       await initializeEncryption(formData.pin);

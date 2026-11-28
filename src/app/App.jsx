@@ -1,3 +1,4 @@
+// Application shell: routing, app-wide gates and the update and install reminders.
 import { useCallback, useEffect, useState } from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { Button, Modal } from '@shared/components/ui';
@@ -10,15 +11,6 @@ import { useSessionExpiry } from '@features/auth/hooks/useSessionExpiry';
 import AppLockGate from '@app/router/guards/AppLockGate.jsx';
 import AppRouter from '@app/router/AppRouter.jsx';
 
-/**
- * Application shell: routing, app-wide gates, and the two reminders that can
- * surface on any screen.
- *
- * Everything that used to live here directly — the guards, the route table,
- * the route transition, the periodic sync loop, the update poll and the
- * session-expiry listener — now sits in its own module. This file only wires
- * them together.
- */
 function App() {
   const [syncReminder, setSyncReminder] = useState(null);
   const [splashPhase, setSplashPhase] = useState('visible');

@@ -1,8 +1,3 @@
-/*
-  The hero. A filled brand-green card with white text and a soft coloured
-  lift — the visual anchor of the dashboard. Layout is unchanged (balance on
-  the left, wallet status on the right); only the treatment is elevated.
-*/
 .card {
   margin-bottom: var(--space-16);
   padding: var(--space-20);
@@ -83,11 +78,6 @@
   color: rgba(255, 255, 255, 0.66);
 }
 
-/*
-  On the green hero the badge is a translucent white chip for every state;
-  the status reads through the dot colour, so it stays legible without
-  fighting the card.
-*/
 .syncBadge {
   box-sizing: border-box;
   display: flex;

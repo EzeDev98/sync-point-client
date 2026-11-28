@@ -24,8 +24,6 @@
   transform: translateX(-100%);
   transition: transform var(--duration-drawer) var(--easing-standard);
 
-  /* Promotes the drawer to its own compositor layer so the slide is done on
-     the GPU rather than repainting the page beneath it on every frame. */
   will-change: transform;
 }
 

@@ -1,19 +1,7 @@
+// Shared label, control and hint or error layout for form fields.
 import { useId } from 'react';
 import styles from './FormField.module.css';
 
-/**
- * The shell every form control shares: label, the control itself, and a
- * hint-or-error line beneath it.
- *
- * TextField, SelectField, AmountField and PinField each carried their own
- * copy of this — the same useId/fieldId/messageId derivation, the same
- * label markup, the same message paragraph, and roughly forty identical
- * lines of CSS apiece. Four copies of a form-field shell is four places to
- * fix an accessibility bug.
- *
- * Children are given the ids to bind to via a render prop, so the control
- * stays in charge of its own markup while the wiring is done once here.
- */
 function FormField({
   label,
   optional = false,

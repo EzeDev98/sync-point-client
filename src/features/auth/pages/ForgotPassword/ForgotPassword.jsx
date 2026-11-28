@@ -1,3 +1,4 @@
+// First step of the password reset flow: request an OTP by phone number.
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, FormError, TextField, TextLink } from '@shared/components/ui';

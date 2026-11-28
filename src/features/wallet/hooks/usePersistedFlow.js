@@ -1,33 +1,8 @@
-import { useCallback, useRef } from 'react';
+// Keeps an in-progress payment flow across backgrounding and PIN re-entry.
+import { useCallback, useState } from 'react';
 
-/**
- * Persists an in-progress transaction flow so it survives the app being
- * backgrounded — screen lock, an incoming call, minimising — and the PIN
- * re-verification that follows on return.
- *
- * Why sessionStorage: a half-finished transfer should outlive a lock/unlock
- * within the same app session, but must not linger after the app is fully
- * closed. sessionStorage gives exactly that lifetime.
- *
- * Why a TTL: a lock/call/minimise resume happens within seconds. A flow the
- * user wandered away from and returns to much later should start fresh rather
- * than silently dropping them back into a stale screen. The snapshot carries a
- * timestamp and is ignored (and cleared) once older than {@link FLOW_TTL_MS}.
- *
- * Security: the caller must never put the entered PIN into the snapshot. Only
- * non-secret flow state (step, request, generated/scanned payload, amount)
- * belongs here.
- *
- * @param {string} storageKey unique per flow, e.g. 'send:flow' / 'receive:flow'
- * @returns {{ initial: object|null, persist: (snapshot: object) => void, clear: () => void }}
- */
 export function usePersistedFlow(storageKey) {
-  // Read once, synchronously, so the value is available to lazy state
-  // initializers on the very first render — before any effect runs.
-  const initialRef = useRef(undefined);
-  if (initialRef.current === undefined) {
-    initialRef.current = readSnapshot(storageKey);
-  }
+  const [initial] = useState(() => readSnapshot(storageKey));
 
   const persist = useCallback(
     (snapshot) => {
@@ -47,10 +22,9 @@ export function usePersistedFlow(storageKey) {
     sessionStorage.removeItem(storageKey);
   }, [storageKey]);
 
-  return { initial: initialRef.current, persist, clear };
+  return { initial, persist, clear };
 }
 
-/** Fifteen minutes — comfortably longer than any lock/call, short enough to bound staleness. */
 export const FLOW_TTL_MS = 15 * 60 * 1000;
 
 function readSnapshot(storageKey) {

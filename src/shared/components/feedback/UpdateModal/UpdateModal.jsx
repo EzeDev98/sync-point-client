@@ -1,15 +1,7 @@
+// Dialog prompting the user to load a newer build.
 import Button from '../../ui/Button/Button.jsx';
 import Modal from '../../ui/Modal/Modal.jsx';
 
-/**
- * Prompts the user to load a newer build.
- *
- * All three inline style objects are gone: the side-by-side button layout is
- * Modal's `actions` slot, which already distributes its children evenly.
- *
- * A mandatory update cannot be dismissed, so overlay and Escape dismissal are
- * both disabled in that case.
- */
 function UpdateModal({ onLater, onUpdate, isUpdating, error = '', mandatory = false }) {
   return (
     <Modal

@@ -1,10 +1,4 @@
-/**
- * A separate database holding preserved sessions.
- *
- * Kept apart from the main store on purpose: quarantined data must survive
- * a hard reset, which deletes every other database this origin owns.
- */
-
+// Separate database that keeps preserved sessions through a hard reset.
 const DB_NAME = 'syncpoint_quarantine_db';
 const DB_VERSION = 1;
 const STORE_NAME = 'quarantine';
@@ -41,13 +35,6 @@ function openQuarantineDatabase() {
   return connectionPromise;
 }
 
-/**
- * Runs work against the quarantine store, resolving on transaction
- * completion rather than request success.
- *
- * quarantineService previously wrote this promise wrapper out three times —
- * the same duplication the main database helper removed.
- */
 async function withQuarantineStore(mode, work) {
   const db = await openQuarantineDatabase();
 

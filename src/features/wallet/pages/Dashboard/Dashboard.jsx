@@ -1,3 +1,4 @@
+// Wallet home: balance, quick actions, notifications and recent transactions.
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Settings } from 'lucide-react';
@@ -19,15 +20,9 @@ import { getInitials, readIdentity } from '@features/wallet/utils/identity';
 import { SESSION_EXPIRED, useWalletData } from '@features/wallet/hooks/useWalletData';
 import styles from './Dashboard.module.css';
 
-/** Minimum time the sync spinner stays up, so a fast sync still reads as one. */
 const MIN_SPIN_MS = 600;
 const MAX_SYNC_RETRIES = 4;
 
-/**
- * How many transactions the dashboard shows. Kept small on purpose so the
- * page never scrolls — the rest live on the full history page, reached via
- * "See all", which only appears once there are more than this to see.
- */
 const DASHBOARD_TX_LIMIT = 3;
 
 const LogoutStep = {
@@ -82,7 +77,6 @@ function Dashboard() {
     }
   }, [isSessionValid, navigate]);
 
-  // A locked wallet cannot decrypt anything — send the user back to unlock.
   useEffect(() => {
     if (loadError === SESSION_EXPIRED) {
       const timeoutId = setTimeout(() => navigate('/verifypin', { replace: true }), 800);
@@ -91,8 +85,6 @@ function Dashboard() {
     return undefined;
   }, [loadError, navigate]);
 
-  // The sync result is a transient confirmation — clear it a few seconds after
-  // it appears so it does not sit on the dashboard indefinitely.
   useEffect(() => {
     if (syncResult && !isSyncing) {
       const timeoutId = setTimeout(() => setSyncResult(null), 5000);
@@ -121,7 +113,6 @@ function Dashboard() {
     const startedAt = Date.now();
     let result;
 
-    // Retry only on network errors, backing off a little further each time.
     for (let attempt = 0; attempt <= MAX_SYNC_RETRIES; attempt += 1) {
       try {
         result = await syncPendingTransactions();

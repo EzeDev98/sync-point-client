@@ -1,3 +1,4 @@
+// Full transaction history, newest first.
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AppShell, PageHeader } from '@shared/components/layout';
@@ -6,11 +7,6 @@ import { readIdentity } from '@features/wallet/utils/identity';
 import { SESSION_EXPIRED, useWalletData } from '@features/wallet/hooks/useWalletData';
 import styles from './TransactionHistory.module.css';
 
-/**
- * The full transaction history — every transaction, newest first, scrolled
- * as a normal page. The dashboard shows only the latest few and links here
- * via "See all", so the dashboard itself never has to scroll.
- */
 function TransactionHistory() {
   const navigate = useNavigate();
 
@@ -25,7 +21,6 @@ function TransactionHistory() {
     }
   }, [isSessionValid, navigate]);
 
-  // A locked wallet cannot decrypt anything — send the user back to unlock.
   useEffect(() => {
     if (loadError === SESSION_EXPIRED) {
       const timeoutId = setTimeout(() => navigate('/verifypin', { replace: true }), 800);

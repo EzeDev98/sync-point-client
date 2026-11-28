@@ -1,22 +1,12 @@
+// Draggable floating refresh button.
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import styles from './FloatingRefreshButton.module.css';
 
 const BUTTON_SIZE = 52;
 const EDGE_MARGIN = 16;
-// Pointer has to move more than this before a press counts as a drag rather
-// than a tap/click — without this, a perfectly still finger/mouse could
-// still jitter a pixel or two and get misread as "the user dragged it".
 const DRAG_THRESHOLD = 6;
-// Lets the spin animation actually play for a moment before the browser
-// tears the page down for the reload.
 const SPIN_DELAY_MS = 260;
 
-/**
- * Builds an Archimedean spiral as an SVG path string, sampled as straight
- * segments (enough points per turn that it reads as smooth). Kept as plain
- * math rather than a static asset so the icon has no image file to manage
- * and can be recoloured/animated with plain CSS.
- */
 function buildSpiralPath({ turns = 3, pointsPerTurn = 24, radius = 20, center = 24 }) {
   const totalPoints = turns * pointsPerTurn;
   const coords = [];
@@ -32,19 +22,9 @@ function buildSpiralPath({ turns = 3, pointsPerTurn = 24, radius = 20, center = 
   return `M${coords.join(' L')}`;
 }
 
-/**
- * A draggable floating refresh button, mounted once at the app root so it
- * persists across every route change instead of being re-created per page.
- *
- * Dragging repositions it anywhere on screen; a plain click/tap (no
- * meaningful movement) triggers a real full-page reload — the same thing
- * the browser's own refresh button does — with a short spiral-spin first so
- * the action feels intentional rather than instant.
- */
 function FloatingRefreshButton() {
   const spiralPath = useMemo(() => buildSpiralPath({}), []);
 
-  // Default: bottom-left corner.
   const [position, setPosition] = useState({
     left: EDGE_MARGIN,
     top: null,
@@ -99,12 +79,10 @@ function FloatingRefreshButton() {
     }
   }, []);
 
-  // Keep the button on-screen across viewport size changes (rotating a
-  // device, resizing devtools' responsive mode, etc).
   useEffect(() => {
     function handleResize() {
       setPosition((prev) => {
-        if (prev.top === null) return prev; // still at the default corner, nothing to clamp
+        if (prev.top === null) return prev;
         const maxLeft = window.innerWidth - BUTTON_SIZE;
         const maxTop = window.innerHeight - BUTTON_SIZE;
         return {

@@ -1,3 +1,4 @@
+// Changes the wallet PIN and re-keys local encryption.
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, FormError, PinField } from '@shared/components/ui';
@@ -51,8 +52,6 @@ function ChangePin() {
 
     try {
       await changeWalletPin(formData.oldPin, formData.pin, formData.confirmNewPin);
-      // The server accepted the change — bring the local PIN-derived
-      // encryption key and the offline verifier in line with the new PIN.
       await rotateEncryptionPin(formData.oldPin, formData.pin);
       await saveOfflinePinVerifier(formData.pin);
       navigate('/dashboard');

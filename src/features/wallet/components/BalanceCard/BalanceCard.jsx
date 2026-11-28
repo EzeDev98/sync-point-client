@@ -1,14 +1,7 @@
+// Offline balance with its sync status badge.
 import { Eye, EyeOff } from 'lucide-react';
 import { formatNaira } from '@shared/utils';
 import styles from './BalanceCard.module.css';
-
-/**
- * Available balance plus the sync-state badge.
- *
- * The badge previously repeated the same three-way ternary twice — once for
- * its own class, once for the dot's — then a third time for the label. That
- * is now resolved once into a single `status` value.
- */
 
 function resolveSyncStatus({ isSyncing, failedCount }) {
   if (failedCount > 0) return 'error';

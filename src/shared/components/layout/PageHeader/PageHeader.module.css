@@ -1,8 +1,3 @@
-/*
-  A row, nothing more.
-  Sticky positioning, padding, background and the bottom border all come
-  from AppShell's header slot, which this always renders inside.
-*/
 .header {
   display: flex;
   flex: 1;

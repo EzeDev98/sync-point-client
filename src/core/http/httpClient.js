@@ -1,30 +1,10 @@
+// The single HTTP client used for every server call.
 import { ApiError } from './ApiError.js';
 
-/**
- * The single place an HTTP request is made.
- *
- * Every one of the seventeen endpoints in the old api.js rebuilt the same
- * scaffolding by hand: base URL interpolation, JSON headers, the bearer
- * token, `await response.json()`, and a `data.detail || data.message ||
- * <fallback>` error line. They had drifted — some attached the status code
- * to the error, some did not, and one issued a GET with a request body,
- * which fetch rejects outright.
- *
- * Auth is injected rather than imported. core must not depend on a feature,
- * and importing the token module here would also reintroduce the circular
- * dependency the old code had, where api.js imported token.js and token.js
- * imported api.js straight back.
- */
-
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:2000/api/v1';
-// const BASE_URL = 'http://localhost:2000/api/v1';
 
-
-
-/** Set once at startup by the app entry point. */
 let getAuthToken = null;
 
-/** Called when the server reports the session was ended while the token was still valid. */
 let sessionRevokedHandler = null;
 
 export function configureHttpClient({ tokenProvider, onSessionRevoked }) {
@@ -33,7 +13,6 @@ export function configureHttpClient({ tokenProvider, onSessionRevoked }) {
 }
 
 async function parseBody(response) {
-  // A 204, or an error page from a proxy, will not be JSON.
   const text = await response.text();
   if (!text) return null;
 
@@ -44,13 +23,6 @@ async function parseBody(response) {
   }
 }
 
-/**
- * @param path       endpoint path, e.g. '/wallet/login'
- * @param method     HTTP method, default GET
- * @param body       serialised as JSON when present
- * @param auth       attach the bearer token
- * @param fallback   message used when the server sends none
- */
 export async function request(path, { method = 'GET', body, auth = false, fallback } = {}) {
   const headers = {};
 
@@ -80,7 +52,6 @@ export async function request(path, { method = 'GET', body, auth = false, fallba
       body: body === undefined ? undefined : JSON.stringify(body),
     });
   } catch (err) {
-    // fetch only rejects on a transport failure, never on an HTTP status.
     throw new ApiError('Could not reach the server. Check your connection and try again.', {
       detail: err.message,
     });

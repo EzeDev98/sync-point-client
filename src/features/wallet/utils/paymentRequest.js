@@ -1,13 +1,5 @@
+// Validates a scanned payment request QR payload.
 import { formatNaira } from '@shared/utils';
-
-/**
- * Validation for a scanned PAYMENT_REQUEST QR payload.
- *
- * SendMoney ran seven sequential `if (...) { setErrorModal(...); return; }`
- * blocks inline in its scan handler. Pulling them out makes the rules
- * testable and keeps the ordering explicit: structural checks first, then
- * identity, then limits.
- */
 
 export const PAYMENT_LIMITS = {
   MIN_AMOUNT: 100,
@@ -15,9 +7,6 @@ export const PAYMENT_LIMITS = {
   MAX_OFFLINE_PENDING: 10,
 };
 
-/**
- * @returns {string} an error message, or '' when the request is acceptable
- */
 export function validatePaymentRequest(payload, { senderWalletId, balance, pendingCount, isOnline }) {
   if (!payload || payload.type !== 'PAYMENT_REQUEST') {
     return 'Invalid QR code. Please scan a valid SyncPoint payment request.';
@@ -35,8 +24,6 @@ export function validatePaymentRequest(payload, { senderWalletId, balance, pendi
     return 'You cannot send money to yourself.';
   }
 
-  // Each unsynced transaction is a claim the server has not seen yet, so the
-  // queue is capped until the device gets a chance to reconcile.
   if (!isOnline && pendingCount >= PAYMENT_LIMITS.MAX_OFFLINE_PENDING) {
     return `You have reached the maximum of ${PAYMENT_LIMITS.MAX_OFFLINE_PENDING} pending offline transactions. Connect to the internet to sync before sending more.`;
   }
@@ -58,14 +45,6 @@ export function validatePaymentRequest(payload, { senderWalletId, balance, pendi
   return '';
 }
 
-/**
- * Builds the TRANSFER payload the receiver scans back.
- *
- * `signature` is the sender's authorization of this exact transfer (see
- * core/crypto/transferSignature). It rides inside the QR so the receiver can
- * store it and later present it when syncing — that is what lets the receiver
- * settle the money without the sender being online.
- */
 export function buildTransferPayload({ request, transactionRef, createdAt, sender, signature }) {
   return {
     type: 'TRANSFER',
@@ -97,7 +76,6 @@ export function generateRequestRef() {
   return `REQ-${date}-${random}`;
 }
 
-/** Builds the PAYMENT_REQUEST payload the sender scans. */
 export function buildPaymentRequest({ requestRef, amount, description, receiver, createdAt, expiresAt }) {
   return {
     type: 'PAYMENT_REQUEST',
@@ -114,23 +92,11 @@ export function buildPaymentRequest({ requestRef, amount, description, receiver,
   };
 }
 
-/**
- * Validation for the TRANSFER QR the receiver scans back from the sender.
- *
- * ReceivePayment threw these one at a time from inside a try block; the
- * ordering is preserved — shape, then binding to this request, then amount,
- * then expiry, then settlement status.
- *
- * @returns {string} an error message, or '' when the transfer is acceptable
- */
 export function validateTransferPayload(payload, { requestRef, receiverWalletId, expectedAmount, expiresAt }) {
   if (!payload || payload.type !== 'TRANSFER') {
     return "Invalid QR code. Please scan the sender's transaction receipt QR.";
   }
 
-  // No signature means the transfer cannot be settled server-side (the sender
-  // never authorized it in a verifiable way), so it must not be accepted as a
-  // received credit — it would sit on the device forever, unsyncable.
   if (!payload.signature) {
     return 'This payment is missing its security signature and cannot be accepted. Ask the sender to update their app and try again.';
   }
@@ -158,7 +124,6 @@ export function validateTransferPayload(payload, { requestRef, receiverWalletId,
   return '';
 }
 
-/** Validates the amount the receiver is requesting. */
 export function validateRequestedAmount(value) {
   const amount = Number(value);
 

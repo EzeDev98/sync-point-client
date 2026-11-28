@@ -75,7 +75,6 @@
   background: var(--color-error-bg);
 }
 
-/* Recent activity sits in its own white card, matching the actions card. */
 .activityCard {
   padding: var(--space-8) var(--space-16) var(--space-4);
   background: var(--color-surface-raised);

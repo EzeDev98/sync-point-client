@@ -1,8 +1,3 @@
-/*
-  Top-aligned scrolling variant, used when the card is taller than the
-  viewport (Register). The safe-area inset keeps the title clear of the
-  notch on iOS.
-*/
 .scrollableScreen {
   display: block;
   position: relative;

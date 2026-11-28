@@ -1,3 +1,4 @@
+// First screen; sends installed users straight to the welcome screen.
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@shared/components/ui';
@@ -5,11 +6,6 @@ import { isPWAInstalled } from '@features/device/services/deviceCompatibility';
 import { ROUTES } from '@app/router/routes';
 import { ArrowRight } from 'lucide-react';
 import styles from './Onboarding.module.css';
-
-/**
- * First screen at /. Users who have already installed the app are sent
- * straight to the welcome screen.
- */
 
 const FEATURES = [
   {

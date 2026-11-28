@@ -1,3 +1,4 @@
+// Placeholder screen for features not yet available.
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ChevronLeft, Sparkles } from 'lucide-react';
 import { AppLogo } from '@shared/components/branding';

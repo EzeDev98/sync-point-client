@@ -1,13 +1,6 @@
+// Numbered progress indicator for the multi-step registration form.
 import styles from './StepIndicator.module.css';
 
-/**
- * Numbered progress dots for the multi-step registration form.
- * Replaces .step-indicator / .step / .step-number / .step-label / .step-line,
- * which were hand-assembled in Register.
- *
- * Steps are passed as data so the markup for each is generated once:
- *   steps={['Basic info', 'Security']}
- */
 function StepIndicator({ steps = [], current = 1 }) {
   return (
     <div className={styles.indicator}>

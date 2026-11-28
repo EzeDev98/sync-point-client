@@ -1,8 +1,3 @@
-/*
-  Reproduces the original .page-body: grows to fill the shell and centres its
-  content vertically, so a short screen sits in the middle of the viewport
-  rather than pinned under the header.
-*/
 .body {
   display: flex;
   flex: 1;
@@ -18,8 +13,6 @@
   height: 1px;
   background: var(--color-border);
 }
-
-/* --- Form step -------------------------------------------------------- */
 
 .formScreen {
   display: flex;
@@ -57,8 +50,6 @@
   gap: var(--space-16);
 }
 
-/* --- QR step ---------------------------------------------------------- */
-
 .qrDescription {
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
@@ -82,15 +73,11 @@
   background: var(--color-error-bg);
 }
 
-/* --- Review step ------------------------------------------------------ */
-
 .confirmList {
   display: flex;
   flex-direction: column;
   gap: var(--space-10);
 }
-
-/* --- Complete step ---------------------------------------------------- */
 
 .completeScreen {
   display: flex;

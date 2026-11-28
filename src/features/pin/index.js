@@ -1,3 +1,4 @@
+// Public exports of the PIN feature.
 export { default as ChangePin } from './pages/ChangePin/ChangePin.jsx';
 export { default as CreateNewPin } from './pages/CreateNewPin/CreateNewPin.jsx';
 export { default as ForgotPin } from './pages/ForgotPin/ForgotPin.jsx';

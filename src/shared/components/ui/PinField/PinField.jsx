@@ -1,22 +1,8 @@
+// Four-digit PIN input.
 import { useState } from 'react';
 import FormField from '../FormField/FormField.jsx';
 import styles from './PinField.module.css';
 
-/**
- * Four-digit PIN entry.
- *
- * The same input was hand-written eleven times across the PIN screens and
- * the wallet's funding form, each carrying an identical inline
- * `style={{ letterSpacing: '0.4em', textAlign: 'center', fontSize: 20 }}`
- * plus its own Show/Hide button and its own `showX` boolean in the parent.
- *
- * Lives in shared/ rather than in the pin feature because the wallet screens
- * collect a transaction PIN too, and a feature must never import another
- * feature's internals.
- *
- * Digit-only filtering and the length cap are enforced here, so a parent's
- * onChange only ever receives a valid partial PIN.
- */
 function PinField({
   label,
   value,

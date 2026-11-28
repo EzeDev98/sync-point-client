@@ -23,11 +23,6 @@
   color: var(--color-text-muted);
 }
 
-/*
-  Focus shows as the soft ring only — no border-colour change.
-  A teal border reads as an outline against the resting grey one, which is
-  the effect this deliberately avoids.
-*/
 .input:focus {
   box-shadow: var(--ring-accent);
 }
@@ -45,7 +40,6 @@
   box-shadow: var(--ring-error);
 }
 
-/* Leaves room for the Show/Hide control so long values never run under it */
 .inputWithToggle {
   padding-right: 56px;
 }

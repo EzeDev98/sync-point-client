@@ -1,18 +1,11 @@
+// Runs a background sync on a fixed interval.
 import { useEffect } from 'react';
 import { getPendingCount } from '@core/db/transactionRepository';
 import { getIsOnline } from '@core/network/networkService';
 import { syncPendingTransactionsGuarded } from '@features/sync/services/syncService';
 
-/** How often to attempt a background sync. */
 const SYNC_INTERVAL_MS = 10 * 60 * 1000;
 
-/**
- * Periodically drains the pending transaction queue.
- *
- * When the device is offline and transactions are waiting, the caller is
- * notified instead so it can nudge the user — an unsynced queue eventually
- * blocks new transactions, so silence is the wrong behaviour.
- */
 export function usePeriodicSync({ onOfflineReminder }) {
   useEffect(() => {
     let cancelled = false;

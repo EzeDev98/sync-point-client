@@ -1,13 +1,7 @@
+// Naira amount input.
 import FormField from '../FormField/FormField.jsx';
 import styles from './AmountField.module.css';
 
-/**
- * Currency amount input with a fixed ₦ prefix.
- *
- * Replaces the .amount-wrapper / .currency-symbol / .amount-input trio,
- * whose stylesheet needed two `!important` declarations to beat the generic
- * input rules it was fighting. Scoping removes that conflict entirely.
- */
 function AmountField({
   label,
   value,

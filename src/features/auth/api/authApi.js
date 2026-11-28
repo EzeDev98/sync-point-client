@@ -1,8 +1,7 @@
+// Registration, sign-in, sign-out and password recovery API calls.
 import { http } from '@core/http/httpClient';
 import { ApiError } from '@core/http/ApiError';
 import { readPersisted } from '@features/auth/services/sessionManager';
-
-/** Registration, sign-in, sign-out and password recovery. */
 
 export function registerUser(formData) {
   return http.post(
@@ -31,13 +30,6 @@ export function loginUser(phoneNumber, password) {
   );
 }
 
-/**
- * Whether this wallet already has a transaction PIN.
- *
- * A PIN endpoint by subject, but an auth endpoint by use: sign-in calls it
- * to decide between routing to PIN setup or PIN entry, and it is the only
- * caller. Keeping it here avoids features/auth reaching into features/pin.
- */
 export function checkPinSet(walletId) {
   return http.get(`/wallet/has-pin?walletId=${encodeURIComponent(walletId)}`, {
     auth: true,
@@ -52,15 +44,6 @@ export function logoutUser() {
   });
 }
 
-/**
- * Exchanges the stored refresh token for a new access token.
- *
- * Deliberately unauthenticated: the access token is expired by definition at
- * this point, and attaching it would recurse back into the refresh logic.
- *
- * The three sentinel messages are what tokenStore branches on — an invalid
- * refresh token ends the session, a transient failure is retried.
- */
 export async function refreshToken() {
   const storedRefreshToken = localStorage.getItem('refreshToken');
   if (!storedRefreshToken) {
@@ -74,9 +57,9 @@ export async function refreshToken() {
     });
   } catch (err) {
     if (err instanceof ApiError && err.isUnauthorized) {
-      throw new Error('REFRESH_INVALID');
+      throw new Error('REFRESH_INVALID', { cause: err });
     }
-    throw new Error('REFRESH_TRANSIENT');
+    throw new Error('REFRESH_TRANSIENT', { cause: err });
   }
 }
 

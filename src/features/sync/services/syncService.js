@@ -1,3 +1,4 @@
+// Syncs queued offline transactions to the server in small chunks.
 import { getIsOnline, isNetworkFailure } from '@core/network/networkService';
 import {
   getPendingCount,
@@ -10,27 +11,11 @@ import { syncTransaction } from '@features/sync/api/syncApi';
 import { calculateOfflineBalance } from '@features/wallet/services/walletLedger';
 import { registerBackgroundSync } from './backgroundSync.js';
 
-/**
- * Pushes locally recorded transactions to the server.
- *
- * Sent in small chunks so a failure costs at most a few transactions rather
- * than the whole queue, and so a large backlog cannot produce one enormous
- * request that times out and never succeeds.
- */
-
 const CHUNK_SIZE = 3;
 
 let isSyncing = false;
 let activeOnlineHandler = null;
 
-/**
- * Only the fields the server accepts — decrypted locals are not sent.
- *
- * `signature` is the sender's authorization of this exact transfer. It MUST
- * be forwarded or the server cannot verify the transfer and will reject it,
- * so a transfer stored before signatures existed (no signature) will be
- * rejected on sync rather than silently accepted.
- */
 function toSyncPayload(transaction) {
   return {
     transactionRef: transaction.transactionRef,
@@ -71,17 +56,6 @@ async function announceBalance() {
   }
 }
 
-/**
- * Builds the set of transactionRefs the server rejected in this batch, keyed
- * to the reason it gave.
- *
- * The server answers 200 even when it refuses individual transfers — the
- * refused ones are listed in `data.failedTransactions`. Everything else in
- * the batch was either newly settled or already processed; both mean the
- * server holds it. So the rule is: rejected ⇒ terminal fail, everything else
- * ⇒ synced. (The idempotent "all already processed" response simply carries
- * no failedTransactions, so every ref falls through to synced.)
- */
 function rejectionsByRef(response) {
   const rejected = new Map();
   const failed = response?.data?.failedTransactions ?? [];
@@ -121,10 +95,6 @@ export async function syncPendingTransactions(onProgress) {
     try {
       const response = await syncTransaction(batch.map(toSyncPayload));
 
-      // A processed batch always comes back with a data envelope. Its absence
-      // means we cannot trust the per-transaction outcome, so treat it like a
-      // transport failure below and leave the whole batch to retry rather than
-      // guess that it succeeded.
       if (!response || typeof response !== 'object' || !response.data) {
         throw new Error('Malformed sync response — no data envelope.');
       }
@@ -133,13 +103,9 @@ export async function syncPendingTransactions(onProgress) {
 
       for (const transaction of batch) {
         if (rejected.has(transaction.transactionRef)) {
-          // The server received it and refused this transfer specifically
-          // (e.g. invalid signature). Terminal — money returns to the offline
-          // balance and it will not be retried.
           await markTransactionRejected(transaction.transactionRef, rejected.get(transaction.transactionRef));
           failed += 1;
         } else {
-          // Newly settled or already processed — either way the server has it.
           await markTransactionSynced(transaction.transactionRef);
           synced += 1;
         }
@@ -148,10 +114,6 @@ export async function syncPendingTransactions(onProgress) {
     } catch (err) {
       console.error('[syncService] Chunk failed:', err.message);
 
-      // A transport failure (or an uninterpretable response) says nothing
-      // about whether the server accepted the batch, so nothing is settled and
-      // the run stops. Everything already synced stays synced and is never
-      // resent; the remainder is picked up by the next attempt.
       if (isNetworkFailure(err)) {
         return {
           total: pending.length,
@@ -165,9 +127,6 @@ export async function syncPendingTransactions(onProgress) {
         };
       }
 
-      // Not a per-transaction verdict and not a network drop — record the
-      // error but leave these records retryable (do NOT settle or terminally
-      // fail on an outcome we never received). The next attempt resends them.
       for (const transaction of batch) {
         await markTransactionFailed(transaction.transactionRef, err.message);
         failed += 1;
@@ -191,13 +150,6 @@ export async function syncPendingTransactions(onProgress) {
   };
 }
 
-/**
- * Runs a sync unless one is already in flight.
- *
- * Concurrent runs would read the same pending queue and send every
- * transaction twice, so every entry point that can fire unattended — the
- * online listener, the periodic timer — goes through here.
- */
 export async function syncPendingTransactionsGuarded(onProgress) {
   if (isSyncing) {
     console.log('[syncService] Sync already in progress — skipping.');
@@ -217,13 +169,6 @@ export function getSyncBadgeCount() {
   return getPendingCount();
 }
 
-/**
- * Syncs whenever connectivity returns.
- *
- * Only one handler is ever registered: an earlier version added a listener
- * per unlock, so a user who locked and unlocked repeatedly accumulated
- * handlers that all fired on the same event.
- */
 export function startAutoSync(onSyncComplete) {
   stopAutoSync();
 
@@ -235,7 +180,6 @@ export function startAutoSync(onSyncComplete) {
       console.log('[syncService] Auto sync result:', result);
       onSyncComplete?.(result);
     } catch (err) {
-      // A failure while going offline again is expected, not worth reporting.
       if (getIsOnline()) {
         console.error('[syncService] Auto sync failed:', err.message);
       }

@@ -1,3 +1,4 @@
+// Verifies a new account's phone number by OTP.
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -27,8 +28,6 @@ function VerifyAccount() {
 
   const [showSuccess, setShowSuccess] = useState(false);
 
-  // Reaching this screen without having registered, or without a login
-  // attempt that flagged the account as unverified, is not a valid state.
   useEffect(() => {
     if (!hasPendingVerification()) {
       navigate('/register', { replace: true });

@@ -1,3 +1,4 @@
+// Verifies the PIN reset OTP.
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, FormError, OtpField, TextLink } from '@shared/components/ui';
@@ -7,15 +8,13 @@ import { useOtpVerification } from '@shared/hooks/useOtpVerification';
 import { maskPhoneNumber } from '@shared/utils';
 import { requestPinResetOtp, verifyPinResetOtp } from '@features/pin/api/pinApi';
 import { readPersisted } from '@features/auth/services/sessionManager';
-import { hasRequestedOtp, setPinResetToken } from '@features/pin/state/pinResetState';
+import { clearPinResetState, hasRequestedOtp, setPinResetToken } from '@features/pin/state/pinResetState';
 
 function VerifyPinResetOtp() {
   const navigate = useNavigate();
   const { isOffline } = useNetwork();
   const phoneNumber = readPersisted('phoneNumber');
 
-  // Reaching this step directly would bypass the unsynced-transaction gate
-  // ForgotPin runs, so send the user back to the start of the flow.
   useEffect(() => {
     if (!hasRequestedOtp()) {
       navigate('/forgot-pin', { replace: true });

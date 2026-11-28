@@ -1,3 +1,4 @@
+// Public exports of the auth feature.
 export { default as CreateNewPassword } from './pages/CreateNewPassword/CreateNewPassword.jsx';
 export { default as ForgotPassword } from './pages/ForgotPassword/ForgotPassword.jsx';
 export { default as Login } from './pages/Login/Login.jsx';

@@ -13,7 +13,6 @@
   color: var(--color-accent);
   box-shadow: var(--shadow-lg);
   cursor: grab;
-  /* Stops the browser's own touch scroll/zoom gestures from fighting the drag. */
   touch-action: none;
   transition: box-shadow var(--duration-base) var(--easing-standard);
 }

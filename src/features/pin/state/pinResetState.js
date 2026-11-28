@@ -1,12 +1,4 @@
-/**
- * Carries state between the steps of the PIN-reset flow.
- *
- * No phone number here, unlike passwordResetState: the user is still signed
- * in during a PIN reset — only the PIN is forgotten, not the account — so
- * the phone number is read fresh from the session each time rather than
- * being carried along and risking a stale copy.
- */
-
+// In-memory state shared by the PIN reset steps.
 const EMPTY = { otpRequested: false, resetToken: null };
 
 let state = EMPTY;

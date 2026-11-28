@@ -1,3 +1,4 @@
+// Transaction list with loading, error and empty states.
 import { EmptyState } from '@shared/components/ui';
 import { formatEntryAmount, formatShortDateTime } from '@shared/utils';
 import {
@@ -8,12 +9,6 @@ import {
 } from '@features/wallet/utils/transactionDisplay';
 import styles from './TransactionList.module.css';
 
-/**
- * Scrollable transaction list, including its loading, error and empty states.
- *
- * Those three states were previously three sibling divs in Dashboard, each
- * with the same inline style object and differing only in colour.
- */
 function TransactionList({ transactions = [], isLoading = false, error = '' }) {
   if (isLoading) {
     return <EmptyState>Loading transactions...</EmptyState>;

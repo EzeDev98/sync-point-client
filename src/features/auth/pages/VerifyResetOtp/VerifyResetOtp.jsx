@@ -1,3 +1,4 @@
+// Verifies the password reset OTP.
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, FormError, OtpField, TextLink } from '@shared/components/ui';
@@ -17,7 +18,6 @@ function VerifyResetOtp() {
   const { isOffline } = useNetwork();
   const phoneNumber = getPhoneNumber();
 
-  // Reaching this step without having requested a code is not a valid state.
   useEffect(() => {
     if (!hasRequestedOtp()) {
       navigate('/forgot-password', { replace: true });

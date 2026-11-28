@@ -1,3 +1,4 @@
+// Route table with the install and unlock guards applied to each route.
 import { Navigate, Route } from 'react-router-dom';
 import {
   CreateNewPassword,
@@ -30,14 +31,6 @@ import RequireUnlock from '@app/router/guards/RequireUnlock.jsx';
 import { ROUTES } from '@app/router/routes';
 import { ComingSoon } from '@shared/pages';
 
-/**
- * Every route is declared here as data rather than as nested JSX, so the
- * guard stack for each one is visible at a glance instead of buried in four
- * levels of wrapper elements.
- *
- *   installed — requires the PWA to be installed
- *   unlocked  — additionally requires the wallet to be unlocked
- */
 const ROUTE_CONFIG = [
   { path: ROUTES.ONBOARDING, element: <Onboarding /> },
   { path: ROUTES.INSTALL, element: <InstallPage /> },
@@ -67,7 +60,6 @@ const ROUTE_CONFIG = [
   { path: ROUTES.COMING_SOON, element: <ComingSoon />, installed: true, unlocked: true },
 ];
 
-/** Wraps an element in whichever guards its config asks for, innermost first. */
 function withGuards(element, { installed, unlocked }) {
   let guarded = element;
 

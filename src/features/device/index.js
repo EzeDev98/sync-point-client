@@ -1,3 +1,4 @@
+// Public exports of the device feature.
 export { default as DeviceGate } from './pages/DeviceGate/DeviceGate.jsx';
 export { default as InstallPage } from './pages/InstallPage/InstallPage.jsx';
 export { default as Offline } from './pages/Offline/Offline.jsx';

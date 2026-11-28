@@ -1,12 +1,7 @@
+// Dashboard grid of quick actions.
 import { ArrowDownLeft, ArrowUpRight, Plus, RefreshCw } from 'lucide-react';
 import styles from './QuickActions.module.css';
 
-/**
- * The four-up action grid.
- *
- * Each button was previously written out longhand with its own icon wrapper
- * and label markup; they are now generated from a single list.
- */
 function QuickActions({ onSend, onReceive, onFund, onSync, isSyncing = false, isOffline = false }) {
   const actions = [
     { key: 'send', label: 'Send', Icon: ArrowUpRight, onClick: onSend },

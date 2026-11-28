@@ -1,3 +1,4 @@
+// Moves funds into the offline wallet or back to the online account.
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { AmountField, Button, InfoBanner, Modal, PinField, TextField } from '@shared/components/ui';
@@ -25,10 +26,6 @@ const TABS = [
   { value: Direction.TO_ONLINE, label: 'Online account', description: 'Move to online' },
 ];
 
-/**
- * Per-direction configuration, so the two flows differ by data rather than by
- * two long near-identical branches inside the submit handler.
- */
 const DIRECTION_CONFIG = {
   [Direction.TO_OFFLINE]: {
     title: 'Fund offline wallet',
@@ -80,7 +77,6 @@ function FundWallet() {
   const [showNoInternet, setShowNoInternet] = useState(false);
   const [dialog, setDialog] = useState(null);
 
-  // Held across retries so a resubmission after a timeout stays idempotent.
   const [requestRef, setRequestRef] = useState(null);
 
   const config = DIRECTION_CONFIG[direction];
@@ -148,7 +144,6 @@ function FundWallet() {
   async function handleSubmit(e) {
     e.preventDefault();
 
-    // Both directions settle against the server, so both need a connection.
     if (isOffline) {
       setShowNoInternet(true);
       return;
@@ -180,7 +175,6 @@ function FundWallet() {
       const phoneNumber = readIdentity('phoneNumber', null);
       const fullName = getFullName();
 
-      // Both sides of this movement are the same user's own wallet.
       await saveLedgerTransaction({
         transactionRef: reference,
         requestRef: reference,

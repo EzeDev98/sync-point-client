@@ -1,41 +1,23 @@
+// Slide-in settings drawer.
 import { useEffect, useState } from 'react';
 import { Camera, ChevronRight, KeyRound, Landmark, LogOut, ShieldCheck, HelpCircle, X } from 'lucide-react';
 import { FormError } from '@shared/components/ui';
 import styles from './SettingsDrawer.module.css';
 
-/**
- * Left-hand settings drawer.
- *
- * Dashboard previously tracked the drawer with two booleans plus a ref to a
- * setTimeout: `settingsOpen` for whether it was mounted and `settingsVisible`
- * for whether it had slid in, with a manual timer unmounting it after the
- * transition. All of that lives here now, and the exit is driven by the
- * transitionend event rather than a duration kept in sync with the
- * stylesheet by hand.
- */
 function SettingsDrawer({ open, onClose, onChangePin, onComingSoon, onLogout, logoutLabel, isLoggingOut, error }) {
   const [isMounted, setIsMounted] = useState(open);
   const [isVisible, setIsVisible] = useState(false);
+  const [wasOpen, setWasOpen] = useState(open);
+
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) setIsMounted(true);
+    else setIsVisible(false);
+  }
 
   useEffect(() => {
-    if (!open) {
-      setIsVisible(false);
-      return undefined;
-    }
+    if (!open) return undefined;
 
-    setIsMounted(true);
-
-    // Two frames, not one.
-    //
-    // A CSS transition needs the browser to have painted the starting state
-    // before the ending state is applied. requestAnimationFrame callbacks
-    // run *before* the next paint, so with a single frame React commits the
-    // off-screen transform and the on-screen transform between the same two
-    // paints — the browser only ever draws the final position and the
-    // drawer appears instantly.
-    //
-    // Waiting a second frame guarantees a paint in between, giving the
-    // transition two distinct states to animate across.
     let innerFrame = null;
     const outerFrame = requestAnimationFrame(() => {
       innerFrame = requestAnimationFrame(() => setIsVisible(true));

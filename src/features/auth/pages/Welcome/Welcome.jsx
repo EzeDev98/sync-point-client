@@ -1,17 +1,9 @@
+// Entry screen offering sign-in or registration.
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AppLogo } from '@shared/components/branding';
 import { Button, ButtonGroup } from '@shared/components/ui';
 import { hasResumableSession } from '@features/auth/services/sessionManager';
 import styles from './Welcome.module.css';
-
-/**
- * Entry screen for users without a session.
- *
- * Installation is guaranteed upstream by InstallGuard, so this screen only
- * handles the sign-in / register choice. The entire `const styles = {...}`
- * inline object the previous version carried is now Welcome.module.css.
- */
 
 const FEATURES = [
   { icon: '📶', text: 'Works completely offline' },

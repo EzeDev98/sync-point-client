@@ -1,18 +1,10 @@
+// Wipes all local data for this origin and reloads the app.
 import { getIsOnline } from '@core/network/networkService';
 import { fetchRemoteBuildId, markBuildApplied } from '@features/device/services/versionService';
 import { getUpdateBlockers } from '@features/device/services/updateGuard';
 
-/**
- * Destructive wipe of everything this origin owns, followed by a reload.
- *
- * Only reachable from the update-accept flow at sign-in, where logout has
- * already guaranteed there are no pending transactions.
- */
-
-/** Survives the wipe — it holds data preserved from an expired session. */
 const PROTECTED_DATABASES = ['syncpoint_quarantine_db'];
 
-/** Resolves regardless of outcome: a blocked delete must not stall the reset. */
 function deleteDatabase(name) {
   return new Promise((resolve) => {
     const request = indexedDB.deleteDatabase(name);
@@ -39,7 +31,6 @@ async function deleteCaches() {
 async function deleteDatabases() {
   if (!('indexedDB' in window)) return;
 
-  // Firefox has no indexedDB.databases(); fall back to the known name.
   if (typeof indexedDB.databases !== 'function') {
     await deleteDatabase('syncpoint_db');
     return;
@@ -69,27 +60,21 @@ export async function performHardReset(targetBuildId) {
     throw new Error('OFFLINE');
   }
 
-  // Last line of defence: never wipe a device that still holds unsynced transfers or possible funds.
   if ((await getUpdateBlockers()).blocked) {
     throw new Error('UNSYNCED_DATA');
   }
 
-  // Resolved before anything is wiped, so a failed lookup cannot leave a half-reset device.
   const buildToRecord = targetBuildId ?? (await fetchRemoteBuildId());
 
   console.log('[hardReset] Starting full reset...');
 
-  // Order matters: unregister the service worker first, so no in-flight
-  // fetch handler can repopulate a cache that is about to be deleted.
   await unregisterServiceWorkers();
   await deleteCaches();
   await deleteDatabases();
   clearWebStorage();
-  // The wipe above removed the marker, so write it back or the next check prompts again.
   markBuildApplied(buildToRecord);
 
   console.log('[hardReset] Complete — reloading.');
 
-  // The query string defeats any remaining HTTP cache on the reload itself.
   window.location.href = `${window.location.origin}/login?fresh=${Date.now()}`;
 }

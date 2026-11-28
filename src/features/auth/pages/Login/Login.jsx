@@ -1,3 +1,4 @@
+// Sign-in screen, including the offer to install a newer build when it is safe.
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -27,10 +28,6 @@ import styles from './Login.module.css';
 
 const MANDATORY_POLL_MS = 15_000;
 
-/**
- * Offered whenever a newer build exists AND wiping this device is safe (nothing unsynced, no
- * funds that could be on it). notice says why an available update is NOT being offered.
- */
 async function evaluateUpdate() {
   const result = await checkForUpdate();
   if (result.checkFailed) return { show: false, notice: 'checkFailed' };
@@ -65,13 +62,9 @@ function Login() {
   const [updateInfo, setUpdateInfo] = useState({ show: false, remoteBuildId: null });
   const [isUpdating, setIsUpdating] = useState(false);
   const [updateError, setUpdateError] = useState('');
-  // Why an available update is not being offered: 'blocked' or 'checkFailed'.
   const [updateNotice, setUpdateNotice] = useState(null);
-  // True once any stored session is known to be over, i.e. the sign-in form is what the user sees.
   const sessionOverRef = useRef(false);
 
-  // One piece of state for every dialog this page can raise, instead of the
-  // four independent booleans the previous version tracked.
   const [dialog, setDialog] = useState(null);
 
   useEffect(() => {
@@ -86,16 +79,12 @@ function Login() {
         return;
       }
 
-      // Settle first whether a stored session is still alive. A dead or revoked one must not
-      // stop the update prompt; a live one goes straight to the PIN screen and is never wiped.
       let sessionIsOver = !hasResumableSession();
 
       if (!sessionIsOver) {
         try {
           await refreshOnStartup();
         } catch (err) {
-          // Only a session the server has actually ended falls through to sign-in. A network or
-          // server hiccup keeps the session: the PIN screen unlocks locally.
           sessionIsOver = ['REFRESH_INVALID', 'REFRESH_EXPIRED', 'NO_REFRESH_TOKEN'].includes(
             err?.message
           );
@@ -124,15 +113,10 @@ function Login() {
     checkUpdateThenSession();
   }, [navigate]);
 
-  // Login is the only screen where an update can be applied safely, because a
-  // fresh sign-in is guaranteed to have no pending transactions. Poll while
-  // the user is here, and re-check the moment the tab regains focus so a
-  // connection that returns mid-visit is caught without a manual refresh.
   useEffect(() => {
     let cancelled = false;
 
     async function poll() {
-      // Only while the sign-in form is what the user is looking at.
       if (!sessionOverRef.current || !getIsOnline()) return;
 
       try {
@@ -168,7 +152,6 @@ function Login() {
       console.error('[Login] Hard reset failed:', err);
 
       if (err?.message === 'UNSYNCED_DATA') {
-        // Data appeared since the prompt was shown: stand down instead of wiping it.
         setUpdateInfo({ show: false, remoteBuildId: null });
         setUpdateNotice('blocked');
       } else {
@@ -232,10 +215,6 @@ function Login() {
       const data = await loginUser(formData.phoneNumber, formData.password);
       persistSession(data);
 
-      // Register this device's offline-transfer signing key while we have a
-      // token and a connection. Best-effort by design: it never throws, so a
-      // transient failure here does not block sign-in — the send flow
-      // re-checks and registers if this didn't complete.
       await ensureSigningKeyEnrolled();
 
       const hadQuarantinedData = await restoreQuarantineIfPresent(data.wallet_id);
@@ -275,7 +254,6 @@ function Login() {
     );
   }
 
-  // A mandatory update takes over the screen entirely — there is no "Later".
   if (updateInfo.show) {
     return (
       <FormScreen>

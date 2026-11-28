@@ -1,3 +1,4 @@
+// Two-step registration form.
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -57,13 +58,6 @@ function Register() {
   const step2Ref = useRef(null);
   const [sliderHeight, setSliderHeight] = useState(null);
 
-  // .track lays both steps out as flex items in a row, and flexbox's
-  // default `align-items: stretch` forces both .step boxes to match the
-  // taller one — regardless of which step is visible. Measure each
-  // step's .fields wrapper (an ordinary block, not itself a flex item,
-  // so its height is never stretched) to get the step's real content
-  // height, and apply that to .slider so no dead space is left below
-  // the shorter step.
   useEffect(() => {
     const activeEl = step === 1 ? step1Ref.current : step2Ref.current;
     if (!activeEl) return undefined;
@@ -175,7 +169,6 @@ function Register() {
         style={sliderHeight ? { height: sliderHeight } : undefined}
       >
         <div className={[styles.track, step === 2 ? styles.trackStepTwo : ''].join(' ')}>
-          {/* Step 1 — basic info */}
           <section className={styles.step} aria-hidden={step !== 1}>
             <div className={styles.fields} ref={step1Ref}>
               <div className={styles.row}>
@@ -237,7 +230,6 @@ function Register() {
             </div>
           </section>
 
-          {/* Step 2 — security and demographics */}
           <section className={styles.step} aria-hidden={step !== 2}>
             <div className={styles.fields} ref={step2Ref}>
               <TextField

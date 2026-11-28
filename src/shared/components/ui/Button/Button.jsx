@@ -1,12 +1,5 @@
+// Button component with variants.
 import styles from './Button.module.css';
-
-/**
- * The single button primitive for the app.
- *
- * Replaces .btn-primary (59 uses), .btn-secondary and .btn-reject, plus the
- * inline `style={{ flex: 1 }}` and `style={{ marginTop: N }}` that was applied
- * to buttons at roughly twenty call sites.
- */
 
 const VARIANT_CLASS = {
   primary: styles.primary,

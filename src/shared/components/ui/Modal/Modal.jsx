@@ -1,13 +1,7 @@
+// Accessible centred dialog.
 import { useEffect, useId } from 'react';
 import styles from './Modal.module.css';
 
-/**
- * Centred dialog. Replaces the .modal-overlay / .modal-card / .modal-icon /
- * .modal-title / .modal-body markup that was hand-written at 22+ call sites.
- *
- * Adds the accessibility behaviour the old markup never had: a dialog role,
- * an Escape handler, and a background scroll lock while open.
- */
 function Modal({
   open = true,
   icon,

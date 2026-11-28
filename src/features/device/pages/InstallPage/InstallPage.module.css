@@ -49,8 +49,6 @@
   color: var(--color-text-muted);
 }
 
-/* --- Waiting ---------------------------------------------------------- */
-
 .spinner {
   align-self: center;
   width: 36px;
@@ -82,8 +80,6 @@
   color: var(--color-text-muted);
 }
 
-/* --- Ready ------------------------------------------------------------ */
-
 .benefits {
   display: flex;
   flex-direction: column;
@@ -109,8 +105,6 @@
   font-weight: var(--font-weight-bold);
   color: var(--color-accent);
 }
-
-/* --- Manual ----------------------------------------------------------- */
 
 .instructions {
   padding: var(--space-16);

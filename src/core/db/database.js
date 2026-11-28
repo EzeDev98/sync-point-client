@@ -1,51 +1,21 @@
-/**
- * IndexedDB connection, schema and the transaction helper every repository
- * builds on.
- *
- * Record shape:
- *   { id, iv, data, status, entryType, type, createdAt, synced,
- *     syncAttempts, lastSyncError, syncedAt }
- *
- * Only those fields are plaintext. Everything sensitive — amounts, wallet
- * IDs, phone numbers, names, references — lives exclusively inside the
- * encrypted `data` blob.
- */
-
+// IndexedDB connection, schema and the shared transaction helper.
 const DB_NAME = 'syncpoint_db';
 const DB_VERSION = 3;
 
 export const STORE_TRANSACTIONS = 'transactions';
 
-/**
- * Stores from v1/v2 that cannot be migrated: they held plaintext records
- * under a different keyPath, and there is no key available at upgrade time
- * to encrypt them with.
- */
 const LEGACY_STORES = ['pending_transactions', 'transactions', 'metadata'];
 
-/**
- * Cached connection.
- *
- * Previously every one of the fifteen exported functions called openDB()
- * itself, so a single dashboard render opened and abandoned a handful of
- * separate connections. Holding the promise means concurrent callers share
- * one connection and only the first pays the open cost.
- */
 let connectionPromise = null;
 
 function createSchema(db) {
   const store = db.createObjectStore(STORE_TRANSACTIONS, { keyPath: 'id' });
 
-  // Only non-sensitive metadata is indexed.
   store.createIndex('status', 'status', { unique: false });
   store.createIndex('entryType', 'entryType', { unique: false });
   store.createIndex('type', 'type', { unique: false });
   store.createIndex('createdAt', 'createdAt', { unique: false });
 
-  // `synced` is stored as a real boolean, and booleans are NOT a valid
-  // IndexedDB key type. This index can be cursored, but index.getAll(true)
-  // or getAll(false) throws a DataError synchronously. Filter on `synced`
-  // in JS after a plain getAll() instead — see countPendingTransfers.
   store.createIndex('synced', 'synced', { unique: false });
 }
 
@@ -76,8 +46,6 @@ export function openDatabase() {
     request.onsuccess = (event) => {
       const db = event.target.result;
 
-      // A connection closed by the browser, or blocked by a newer version in
-      // another tab, must not stay cached — the next call reopens it.
       db.onclose = () => {
         connectionPromise = null;
       };
@@ -99,19 +67,6 @@ export function openDatabase() {
   return connectionPromise;
 }
 
-/**
- * Runs `work` inside a store transaction and resolves once the transaction
- * itself completes.
- *
- * This replaces the promise-wrapping boilerplate that was written out
- * fifteen times. Resolving on `tx.oncomplete` rather than on the individual
- * request's `onsuccess` matters: a request can succeed while the surrounding
- * transaction later aborts, and the old code resolved early in that case and
- * reported a write as durable when it had been rolled back.
- *
- * @param mode 'readonly' | 'readwrite'
- * @param work receives the object store; its return value is the result
- */
 export async function withTransactions(mode, work) {
   const db = await openDatabase();
 
@@ -148,7 +103,6 @@ export async function withTransactions(mode, work) {
   });
 }
 
-/** Promisifies a single IDBRequest. */
 export function toPromise(request) {
   return new Promise((resolve, reject) => {
     request.onsuccess = () => resolve(request.result);

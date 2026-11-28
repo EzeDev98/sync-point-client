@@ -1,10 +1,7 @@
+// Circular back button.
 import { ChevronLeft } from 'lucide-react';
 import styles from './BackButton.module.css';
 
-/**
- * Circular back control. Replaces .back-btn (5 uses).
- * Defaults to history.back via the onClick the caller supplies.
- */
 function BackButton({ onClick, label = 'Go back', className = '' }) {
   return (
     <button

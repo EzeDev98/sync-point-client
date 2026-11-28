@@ -1,12 +1,6 @@
+// Two-segment control with a label and description per segment.
 import styles from './SegmentedTabs.module.css';
 
-/**
- * Two-up segmented control with a label and a description per segment.
- * Replaces .fund-selector / .fund-tab / .fund-tab-label / .fund-tab-desc.
- *
- * Segments are passed as data:
- *   tabs={[{ value: 'offline', label: 'Offline wallet', description: '...' }]}
- */
 function SegmentedTabs({ tabs = [], value, onChange, ariaLabel = 'Select a mode' }) {
   return (
     <div className={styles.selector} role="tablist" aria-label={ariaLabel}>

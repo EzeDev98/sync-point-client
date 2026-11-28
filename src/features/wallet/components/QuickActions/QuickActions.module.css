@@ -1,8 +1,3 @@
-/*
-  The four actions live in their own white card that floats on the off-white
-  canvas, and each tile is a filled soft-brand square rather than a weak
-  outlined one — so they read as tappable and intentional.
-*/
 .grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);

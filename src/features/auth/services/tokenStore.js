@@ -1,3 +1,4 @@
+// Access token expiry checks, refresh and session termination.
 import { refreshToken } from '@features/auth/api/authApi';
 import { getIsOnline } from '@core/network/networkService';
 import { quarantineAndWipeSession } from '@features/device/services/quarantineService';
@@ -7,19 +8,8 @@ import {
   readPersisted,
 } from '@features/auth/services/sessionManager';
 
-/**
- * Access-token lifecycle: expiry checks, refresh, and session termination.
- *
- * Renamed from token.js and repointed at authApi. The old pair imported each
- * other — api.js pulled getValidToken from token.js while token.js pulled
- * refreshToken from api.js — which the HTTP client's injected token provider
- * now breaks.
- */
-
-/** Refresh this long before actual expiry, so a request never races it. */
 const REFRESH_BUFFER_MS = 60_000;
 
-/** In-flight refresh, shared so concurrent callers issue only one request. */
 let refreshPromise = null;
 
 function getTokenExpiry() {
@@ -36,7 +26,6 @@ function isRefreshTokenExpired() {
   const issuedAt = Number(readPersisted('tokenIssuedAt') || 0);
   const refreshExpiresIn = Number(readPersisted('refreshTokenExpiresIn') || 0);
 
-  // A server that sends no refresh expiry is treated as unbounded.
   if (!refreshExpiresIn || refreshExpiresIn <= 0) return false;
 
   return Date.now() >= issuedAt + refreshExpiresIn * 1000;
@@ -48,14 +37,8 @@ async function endSession() {
   throw new Error('SESSION_EXPIRED');
 }
 
-/** In-flight teardown, shared so several 401s at once tear the session down only once. */
 let revokedPromise = null;
 
-/**
- * The server says this session was ended (admin sign-out, logout elsewhere) while the
- * access token was still valid. Same teardown as an expired session: quarantine anything
- * unsynced, wipe the live session, send the user to /login.
- */
 export function handleSessionRevoked() {
   if (!revokedPromise) {
     revokedPromise = quarantineAndWipeSession()
@@ -75,8 +58,6 @@ function doRefresh() {
 
   refreshPromise = refreshToken()
     .then((data) => {
-      // The SyncPoint server returns internal-auth's camelCase shape; snake_case is what
-      // Keycloak used to send, kept as a fallback.
       const accessToken = data.accessToken ?? data.access_token;
       const newRefreshToken = data.refreshToken ?? data.refresh_token;
       const expiresIn = data.expiresIn ?? data.expires_in;
@@ -99,12 +80,6 @@ function doRefresh() {
   return refreshPromise;
 }
 
-/**
- * Returns a usable access token, refreshing it first when necessary.
- *
- * Offline, the stored token is returned as-is: it may be stale, but there is
- * no way to refresh it, and the offline paths do not call the server anyway.
- */
 export async function getValidToken() {
   if (!isAccessTokenExpiringSoon()) {
     return sessionStorage.getItem('sessionToken');
@@ -121,8 +96,6 @@ export async function getValidToken() {
   try {
     return await doRefresh();
   } catch (err) {
-    // Only a definitively rejected refresh ends the session. A network blip
-    // must not sign the user out and quarantine their pending transactions.
     if (err.message === 'REFRESH_INVALID' && getIsOnline()) {
       console.error('[tokenStore] Refresh token invalid:', err);
       await endSession();
@@ -133,15 +106,6 @@ export async function getValidToken() {
   }
 }
 
-/**
- * Refreshes when the app resumes, before any protected route loads — but
- * only when the access token is actually close to expiring. This used to
- * refresh unconditionally on every app open; that was pointless extra
- * load and a needless race window (two tabs/opens both redeeming the same
- * refresh token) even now that the server can be configured
- * non-destructively (Part B) — so it's skipped whenever the current token
- * is still good.
- */
 export async function refreshOnStartup() {
   if (!isAccessTokenExpiringSoon()) {
     return sessionStorage.getItem('sessionToken');

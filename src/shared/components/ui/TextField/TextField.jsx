@@ -1,17 +1,8 @@
+// Text input with an optional reveal toggle for secret values.
 import { useState } from 'react';
 import FormField from '../FormField/FormField.jsx';
 import styles from './TextField.module.css';
 
-/**
- * Text input with an optional reveal toggle for secret values.
- *
- * Label, hint and error handling live in FormField; this file is only the
- * input itself.
- *
- * `secret` renders the Show/Hide control and starts masked. Prefer it over
- * hard-coding type="password", so the toggle and the right-hand padding
- * that makes room for it can never fall out of step.
- */
 function TextField({
   label,
   value,

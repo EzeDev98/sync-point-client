@@ -1,20 +1,8 @@
+// OTP entry, submission and rate-limited resend for the reset flows.
 import { useCallback, useState } from 'react';
 import { useCountdown } from './useCountdown.js';
 import { validateOtp } from '@shared/utils/validation';
 
-/**
- * The OTP step of a reset flow: entry, validation, submission, and a
- * rate-limited resend.
- *
- * VerifyResetOtp and VerifyPinResetOtp were the same page twice — identical
- * state, identical digit filtering, identical cooldown handling, and the
- * same 429-with-remainingSeconds branch. Only the endpoints and the wording
- * differed, so those are the parameters.
- *
- * @param verify   async (otp) => void — throws to surface an error
- * @param resend   async () => void
- * @param cooldownSeconds  resend cooldown, also the initial lockout
- */
 export function useOtpVerification({ verify, resend, cooldownSeconds = 60 }) {
   const [otp, setOtp] = useState('');
   const [errors, setErrors] = useState({});
@@ -62,7 +50,6 @@ export function useOtpVerification({ verify, resend, cooldownSeconds = 60 }) {
       await resend();
       restart(cooldownSeconds);
     } catch (err) {
-      // The server knows better than we do how long is left; honour it.
       if (err.status === 429 && err.remainingSeconds) {
         restart(err.remainingSeconds);
       }

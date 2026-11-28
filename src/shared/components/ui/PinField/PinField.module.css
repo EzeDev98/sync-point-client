@@ -1,4 +1,3 @@
-/* PIN messages sit under a centred input, so they are centred to match */
 .centeredMessage > p {
   text-align: center;
 }
@@ -9,7 +8,6 @@
   align-items: center;
 }
 
-/* Wide tracking and centred digits — the treatment every PIN input used */
 .input {
   width: 100%;
   height: var(--input-height);
@@ -34,11 +32,6 @@
   color: var(--color-text-muted);
 }
 
-/*
-  Focus shows as the soft ring only — no border-colour change.
-  A teal border reads as an outline against the resting grey one, which is
-  the effect this deliberately avoids.
-*/
 .input:focus {
   box-shadow: var(--ring-accent);
 }

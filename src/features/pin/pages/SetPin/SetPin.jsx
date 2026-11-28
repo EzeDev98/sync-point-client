@@ -1,3 +1,4 @@
+// Sets the wallet PIN for the first time.
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, FormError, PinField } from '@shared/components/ui';

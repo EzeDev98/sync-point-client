@@ -1,3 +1,4 @@
+// Unlocks the wallet with the PIN, online or offline.
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, Modal, TextLink, PinField } from '@shared/components/ui';
@@ -17,14 +18,6 @@ import {
 import { startAutoSync, syncPendingTransactions } from '@features/sync/services/syncService';
 import { PIN_LENGTH } from '@features/pin/utils/pinValidation';
 
-/**
- * Identity fields restored from localStorage into sessionStorage when the app
- * is reopened after being closed.
- *
- * offlineBalance is deliberately absent: the offline balance is always
- * derived from IndexedDB via the wallet ledger, so a stored copy would be
- * stale the moment it was written.
- */
 const PERSISTED_IDENTITY_KEYS = [
   'walletId',
   'userId',
@@ -38,13 +31,6 @@ const PERSISTED_IDENTITY_KEYS = [
   'mirrorBalance',
 ];
 
-/**
- * Where to go after a successful unlock: back to the route the user was on
- * when the app was backgrounded (captured by AppLockGate), or the dashboard
- * when there is nothing to return to. Read-and-clear so it is used exactly
- * once. This is what lets an in-progress transaction survive a lock, an
- * incoming call, or the app being minimised.
- */
 function resolveReturnTo() {
   const returnTo = sessionStorage.getItem('lockReturnTo');
   sessionStorage.removeItem('lockReturnTo');
@@ -78,9 +64,6 @@ function PinVerification() {
     }
   }, []);
 
-  // Touch the server once on arrival. If an admin ended this session while the app was closed,
-  // the 401 tears it down here, before the user types a PIN. Errors are ignored on purpose:
-  // the global handler does the work, and offline/transient failures must not block unlock.
   useEffect(() => {
     if (!walletId || isOffline) return;
     checkPinSet(walletId).catch(() => {});
@@ -91,7 +74,6 @@ function PinVerification() {
     if (errors.pin) setErrors({});
   }
 
-  /** Restores the encryption key, using the wrapped key when one exists. */
   async function establishEncryption(enteredPin) {
     if (localStorage.getItem('wrappedDEK')) {
       await restoreEncryption(enteredPin);
@@ -119,17 +101,11 @@ function PinVerification() {
     }
   }
 
-  /**
-   * Checks the PIN locally when asked to, or against the server otherwise. If the server can't be
-   * reached (or answers 5xx/401) and this device holds a PIN verifier, it falls back to the local
-   * check, so a bad connection never locks the user out of their own wallet.
-   */
   async function checkPin(enteredPin, useLocal) {
     if (useLocal) return verifyOfflinePin(enteredPin);
     try {
       return await verifyWalletPin(walletId, enteredPin);
     } catch (err) {
-      // A revoked session must never fall through to the offline PIN check.
       if (err instanceof ApiError && err.body?.code === 'SESSION_REVOKED') throw err;
       const serverUnavailable =
         err instanceof ApiError && (err.status === undefined || err.status >= 500 || err.status === 401);
@@ -149,11 +125,6 @@ function PinVerification() {
     setIsSubmitting(true);
 
     try {
-      // A quick re-lock (screen slept, app briefly backgrounded) never tore
-      // down the JS runtime, so the data key is still in memory. That makes
-      // this a lock-screen check rather than a fresh session resume: verify
-      // locally and skip re-running encryption setup and auto-sync, which
-      // would otherwise register a duplicate "online" listener every unlock.
       const isQuickRelock =
         sessionStorage.getItem('walletLocked') === 'true' && isEncryptionReady();
 

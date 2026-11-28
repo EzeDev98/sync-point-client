@@ -1,16 +1,8 @@
+// Blocks the app on devices that cannot run it.
 import { useState } from 'react';
 import { checkDeviceCompatibility } from '@features/device/services/deviceCompatibility';
 import styles from './DeviceGate.module.css';
 
-/**
- * Blocks the whole app on devices that cannot run it.
- *
- * Compatibility is checked once on mount — the device will not change
- * mid-session, and re-running it on every render would be wasted work.
- *
- * This sits outside the router (see main.jsx), so it cannot use the shared
- * layout components, which assume a router context.
- */
 function DeviceGate({ children }) {
   const [compatibility] = useState(checkDeviceCompatibility);
 

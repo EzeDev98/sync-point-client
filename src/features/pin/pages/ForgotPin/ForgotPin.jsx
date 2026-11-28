@@ -1,3 +1,4 @@
+// First step of the PIN reset flow, blocked while transactions are unsynced.
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button, FormError, InfoBanner } from '@shared/components/ui';
@@ -10,7 +11,6 @@ import { getPendingCount } from '@core/db/transactionRepository';
 import { markOtpRequested } from '@features/pin/state/pinResetState';
 import styles from './ForgotPin.module.css';
 
-/** What the unsynced-transaction gate decided. */
 const GateState = {
   CHECKING: 'checking',
   BLOCKED: 'blocked',
@@ -27,16 +27,6 @@ function ForgotPin() {
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // A PIN reset must be blocked while unsynced offline transactions exist:
-  // they were encrypted with the key derived from the PIN about to be
-  // replaced, and once it is replaced they cannot be decrypted or synced —
-  // permanently, not "retry later".
-  //
-  // Checked here rather than only on the "Forgot PIN?" link so navigating
-  // straight to this route cannot bypass the gate.
-  //
-  // Fails CLOSED: if the pending count cannot be determined, proceeding is
-  // not assumed to be safe.
   useEffect(() => {
     async function checkPending() {
       try {

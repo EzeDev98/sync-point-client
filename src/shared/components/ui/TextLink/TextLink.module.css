@@ -10,7 +10,6 @@
   cursor: pointer;
 }
 
-/* Hover feedback by colour, not an underline. */
 .link:hover:not(:disabled) {
   color: var(--color-accent-hover);
 }

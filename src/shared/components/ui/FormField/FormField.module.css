@@ -20,11 +20,6 @@
   color: var(--color-text-muted);
 }
 
-/*
-  min-height reserves the message line whether or not a message is present.
-  Without it the whole form shifts down the moment a validation error
-  appears. This was in the original stylesheet and is deliberate.
-*/
 .hint,
 .error {
   margin: 0;

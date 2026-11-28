@@ -1,13 +1,8 @@
+// Locks the wallet when the app leaves the foreground and asks for the PIN on return.
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { PROTECTED_PATHS, ROUTES } from '@app/router/routes';
 
-/**
- * Locks the wallet whenever the app leaves the foreground, and forces PIN
- * re-entry on return if the user is on a protected route.
- *
- * Renders nothing — it exists only for the visibility listener.
- */
 function AppLockGate() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -19,10 +14,6 @@ function AppLockGate() {
       if (document.visibilityState === 'hidden') {
         sessionStorage.setItem('walletLocked', 'true');
 
-        // Remember where the user was so the PIN screen can send them back
-        // there after unlocking. Without this, every unlock lands on the
-        // dashboard and abandons an in-progress transaction. Only worth
-        // remembering a protected route, and never the PIN screen itself.
         const onProtectedRoute = PROTECTED_PATHS.some((path) =>
           location.pathname.startsWith(path)
         );

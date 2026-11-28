@@ -1,14 +1,6 @@
+// Converts between encrypted stored records and transaction objects.
 import { decryptData, encryptData, isEncryptionReady } from '@core/crypto/cipher';
 
-/**
- * The boundary between stored records and transaction objects.
- *
- * Keeping encryption here means the repositories deal only in domain
- * objects, and the rule about which fields stay plaintext is stated in one
- * place instead of being re-implemented at each write site.
- */
-
-/** Fields kept plaintext so they can be indexed and queried without a key. */
 export function toRecord(transaction, { iv, data }) {
   return {
     id: transaction.transactionRef,
@@ -41,13 +33,6 @@ export async function encodeTransaction(transaction) {
   return toRecord(transaction, encrypted);
 }
 
-/**
- * Decrypts a record back into a transaction.
- *
- * A record that fails to decrypt is returned as CORRUPTED rather than
- * throwing, so one damaged row cannot take down the whole transaction list.
- * Callers that must not act on unreadable data filter on this status.
- */
 export async function decodeRecord(record) {
   if (!record) return null;
 
@@ -56,8 +41,6 @@ export async function decodeRecord(record) {
 
     return {
       ...payload,
-      // Metadata may have been updated without re-encrypting the blob, so
-      // the plaintext columns win over whatever the payload captured.
       status: record.status,
       synced: record.synced,
       syncAttempts: record.syncAttempts || 0,

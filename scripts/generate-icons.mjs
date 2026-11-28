@@ -1,3 +1,4 @@
+// Generates the PWA icon set from the source image.
 import sharp from 'sharp';
 import fs from 'fs';
 import path from 'path';
@@ -17,7 +18,6 @@ if (!fs.existsSync(iconsDir)) {
 
 async function generateIcons() {
   try {
-    // Check if source image exists
     if (!fs.existsSync(sourceImage)) {
       console.error(`❌ Source image not found at: ${sourceImage}`);
       console.log('Please place a 512x512 PNG image at public/icon-source.png');

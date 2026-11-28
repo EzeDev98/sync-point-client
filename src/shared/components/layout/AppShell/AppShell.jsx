@@ -1,16 +1,6 @@
+// Phone-width app frame with header, body and footer slots.
 import styles from './AppShell.module.css';
 
-/**
- * The phone-width application frame: a sticky header slot, a body that
- * absorbs the remaining height, and a footer pinned to the bottom.
- *
- * Replaces .sp-app, .sp-header and .sp-body.
- *
- * The footer is a sibling of <main>, not a child of it — that is what makes
- * it sit at the bottom of the viewport on a short page rather than directly
- * beneath the content. <main> carries flex: 1 and grows to fill whatever is
- * left, pushing the footer down.
- */
 function AppShell({ header, footer, children, className = '' }) {
   return (
     <div className={[styles.shell, className].filter(Boolean).join(' ')}>

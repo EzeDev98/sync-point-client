@@ -1,12 +1,4 @@
-/**
- * Browser Background Sync registration.
- *
- * Separate from syncService because it is a capability wrapper, not queue
- * logic: it asks the service worker to retry later and knows nothing about
- * transactions. Both degrade silently — Background Sync is unsupported on
- * iOS, and the in-app online listener covers that case.
- */
-
+// Registers browser Background Sync with the service worker.
 const SYNC_TAG = 'sync-transactions';
 
 function isSupported() {

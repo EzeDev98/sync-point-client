@@ -58,12 +58,6 @@
   border-radius: var(--radius-3xl);
 }
 
-/*
-  html5-qrcode injects its own markup and inline sizing into this element.
-  These rules override it. The !important flags are unavoidable — the library
-  sets width and height as inline styles on nodes it creates, which no
-  selector specificity can beat.
-*/
 .reader {
   position: absolute !important;
   top: 0 !important;
@@ -141,13 +135,6 @@
   border-radius: 0 0 var(--radius-xs) 0;
 }
 
-/*
-  The sweep animates `top` (a percentage of the box) rather than translateY.
-  translateY percentages resolve against the element's OWN height — and this
-  line is 2px tall, so translateY(±40%) moved it ±0.8px and looked frozen.
-  Anchoring with left/width keeps it centred horizontally while top sweeps
-  the full frame.
-*/
 .scanLine {
   position: absolute;
   left: 10%;

@@ -1,21 +1,4 @@
-/**
- * Device signing-key storage.
- *
- * The wallet's offline-transfer signing keypair lives here, in its own tiny
- * IndexedDB database — deliberately separate from the encrypted transactions
- * store so a schema bump on one never risks the other, and so a hard reset
- * (which deletes every non-protected database) clears it along with
- * everything else.
- *
- * The private key is a non-extractable CryptoKey: it can sign but can never
- * be read back out of the browser, even by this code. It is still
- * structured-cloneable, so IndexedDB persists the CryptoKey object itself —
- * we never touch raw private-key bytes. The public key is stored alongside it
- * so its SPKI can be re-exported to (re-)register with the server without
- * regenerating the pair, and a `registered` flag records whether the server
- * has already accepted this device's public key.
- */
-
+// IndexedDB storage for the device's offline transfer signing key pair.
 const DB_NAME = 'syncpoint_signing_keys';
 const DB_VERSION = 1;
 const STORE = 'keys';
@@ -57,11 +40,6 @@ function openDb() {
   return connectionPromise;
 }
 
-/**
- * Runs `work` in a store transaction and resolves on the transaction's
- * completion (not the request's success), so a write is only reported durable
- * once the surrounding transaction has actually committed.
- */
 function runTx(mode, work) {
   return openDb().then(
     (db) =>
@@ -90,26 +68,22 @@ function runTx(mode, work) {
   );
 }
 
-/** The stored record, or null. Shape: { id, privateKey, publicKey, registered }. */
 export async function loadSigningKeyRecord() {
   const record = await runTx('readonly', (store) => store.get(RECORD_ID));
   return record ?? null;
 }
 
-/** Whether a usable private key is on this device. */
 export async function hasSigningKey() {
   const record = await loadSigningKeyRecord();
   return record != null && record.privateKey != null;
 }
 
-/** Persists a freshly generated keypair (registered defaults to false). */
 export async function saveSigningKeyRecord({ privateKey, publicKey, registered = false }) {
   await runTx('readwrite', (store) =>
     store.put({ id: RECORD_ID, privateKey, publicKey, registered })
   );
 }
 
-/** Marks the stored key as accepted by the server. No-op if none is stored. */
 export async function markSigningKeyRegistered() {
   const record = await loadSigningKeyRecord();
   if (!record) return;
@@ -117,7 +91,6 @@ export async function markSigningKeyRegistered() {
   await runTx('readwrite', (store) => store.put(record));
 }
 
-/** Removes the device signing key. Best-effort — never throws. */
 export async function clearSigningKey() {
   try {
     await runTx('readwrite', (store) => store.delete(RECORD_ID));

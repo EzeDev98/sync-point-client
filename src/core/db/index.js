@@ -1,3 +1,4 @@
+// Public exports of the local database module.
 export { openDatabase, STORE_TRANSACTIONS } from './database.js';
 export { getAllRawRecords, restoreRawRecords } from './backupRepository.js';
 export { saveLedgerTransaction } from './ledgerRepository.js';
